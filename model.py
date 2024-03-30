@@ -62,12 +62,12 @@ class OutputBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, bias: bool,):
         super(OutputBlock, self).__init__()
         layer = [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)]
-        layer.append(
-            TernaryOperator.operate_elif(
-                out_channels == 1, nn.Sigmoid(),
-                out_channels >= 2, nn.Softmax(), nn.Softmax()
-            )
-        )
+        # layer.append(
+        #     TernaryOperator.operate_elif(
+        #         out_channels == 1, nn.Sigmoid(),
+        #         out_channels >= 2, nn.Softmax(), nn.Softmax()
+        #     )
+        # )
         self.conv = nn.Sequential(*layer)
 
     def forward(self, x):
