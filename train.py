@@ -99,6 +99,16 @@ class Train():
                         outputs = self.model(inputs)
                         val_loss += self.criterion(outputs, masks).item()
 
+                        if self.show > 0:
+                            plt.figure(facecolor='black')
+                            plt.subplot(2, 2, 1)
+                            plt.imshow(self.tensor_to_numpy(outputs[0][0]))
+                            plt.subplot(2, 2, 2)
+                            plt.imshow(self.tensor_to_numpy(masks[0][0]))
+                            plt.show(block=False)
+                            plt.pause(self.show)
+                            plt.close()
+
                     val_loss /= len(self.valid_set)
                     print(f'Validation Epoch: {epoch}/{self.epochs}, Validation Loss: {val_loss}')
 

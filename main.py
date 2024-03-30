@@ -41,7 +41,7 @@ DROPOUT = 0.2
 LEARNING_RATE = 1e-4
 EPOCHS = 100
 ACCUMULATION_STEPS = 2
-SHOW_TIME = 1
+SHOW_TIME = 0.5
 CSV_FILENAME = 'csv/iris_train.csv'
 MODEL_FILENAME = 'model/model2.pth'
 
