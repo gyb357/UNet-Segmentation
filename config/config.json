@@ -31,11 +31,12 @@
     "BIAS": true,
     "DROPOUT": 0.2,
     "CHECKPOINT": true,
-    "LR": 0.001,
-    "EPOCHS": 30,
+    "LR": 1e-4,
+    "EPOCHS": 100,
     "ACCUMULATION": 4,
+    "CHECKPOINT_INTERVAL": 20,
     "SHOW": 0.5,
     "CSV_PATH": "csv/iris_train.csv",
-    "CHECKPOINT_PATH": "",
+    "CHECKPOINT_PATH": "model/checkpoint",
     "MODEL_PATH": "model/model.pth"
 }

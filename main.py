@@ -18,7 +18,6 @@ config_path = 'config/config.json'
 config = load_config(config_path)
 
 
-# Device
 DEVICE = device(config['DEVICE'] if cuda.is_available() else 'cpu')
 
 
@@ -102,6 +101,7 @@ if __name__ == '__main__':
         test_set=test_loader,
         epochs=config['EPOCHS'],
         accumulation=config['ACCUMULATION'],
+        checkpoint_interval=config['CHECKPOINT_INTERVAL'],
         device=DEVICE,
         show=config['SHOW'],
         csv_path=config['CSV_PATH'],

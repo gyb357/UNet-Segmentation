@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import csv
 from tqdm import tqdm
 from loss import dice_loss
-import torch.nn.functional as F
 import torch
+import os
 
 
 class Train():
@@ -23,6 +23,7 @@ class Train():
             test_set: DataLoader,
             epochs: int,
             accumulation: int,
+            checkpoint_interval: int,
             device: device,
             show: float,
             csv_path: str,
@@ -37,6 +38,7 @@ class Train():
         self.test_set = test_set
         self.epochs = epochs
         self.accumulation = accumulation
+        self.checkpoint_interval = checkpoint_interval
         self.device = device
         self.show = show
         self.csv_path = csv_path
@@ -147,6 +149,11 @@ class Train():
                 val_loss, val_dice_loss = self.test(self.valid_set)
                 print(f'Epoch: {epoch}, val_loss: {val_loss}, val_dice_loss: {val_dice_loss}')
 
+                # Checkpoint save
+                if epoch % self.checkpoint_interval == 0:
+                    torch.save(self.model.state_dict(), f'{self.checkpoint_path}/epoch_{epoch}.pth')
+                    print(f'Model saved at epoch {epoch}.')
+
                 # Record
                 writer.writerow({
                     'Epoch': epoch,
@@ -155,4 +162,8 @@ class Train():
                     'Val_loss': val_loss,
                     'Val_dice_loss': val_dice_loss
                 })
+
+
+            # Model save
+            torch.save(self.model.state_dict(), self.model_path)
 
