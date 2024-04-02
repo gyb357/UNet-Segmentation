@@ -97,10 +97,5 @@ if __name__ == '__main__':
         csv_path          = config['csv_path'],
         checkpoint_path   = config['checkpoint_path'],
         model_path        = config['model_path']
-    )
-
-
-    train.fit()
-    test_loss, test_miou = train.eval(test_loader)
-    print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
+    ).train()
 

@@ -10,6 +10,7 @@ from tqdm import tqdm
 from score import iou_coef
 import csv
 from utils import make_folder
+import time
 
 
 class Train():
@@ -66,6 +67,11 @@ class Train():
             plt.pause(self.show)
             plt.close()
 
+    def save(self, save_path: str, save_name: str) -> None:
+        make_folder(save_path)
+        torch.save(self.model.state_dict(), save_name)
+        print(f'Model saved at {save_name}.')
+
     def eval(self, dataset: DataLoader) -> float:
         num_dataset = len(dataset)
         if num_dataset > 0:
@@ -74,32 +80,37 @@ class Train():
             with torch.no_grad():
                 self.model.eval()
                 
-                for inputs, masks in tqdm(dataset):
-                    inputs, masks = inputs.to(self.device), masks.to(self.device)
+                with autocast():
+                    for inputs, masks in tqdm(dataset):
+                        inputs, masks = inputs.to(self.device), masks.to(self.device)
 
-                    # Forward propagation
-                    outputs = self.model(inputs)
+                        # Forward propagation
+                        outputs = self.model(inputs)
 
-                    # Calculate loss
-                    loss += self.criterion(outputs, masks).item()
-                    miou += iou_coef(outputs, masks)
+                        # Calculate loss
+                        loss += self.criterion(outputs, masks).item()
+                        miou += iou_coef(outputs, masks).item()
 
-                    # Visualization
-                    self.show_image(outputs, masks)
+                        # Visualization
+                        self.show_image(outputs, masks)
 
-                loss /= num_dataset
-                miou /= num_dataset
+            loss /= num_dataset
+            miou /= num_dataset
             return loss, miou
         else: raise ValueError('The length of dataset must be at least 1.')
 
-    def fit(self):
-        with open(self.csv_path, 'w', newline='') as csv_file:
-            # Record writer
+    def train(self):
+        # Record writer
+        make_folder(self.csv_path)
+
+        with open(f'{self.csv_path}train_logg.csv', 'w', newline='') as csv_file:
             writer = csv.DictWriter(csv_file, ['Epoch', 'Train_loss', 'Train_loss_mini', 'Train_loss_micro', 'Train_miou', 'Val_loss', 'Val_miou'])
             writer.writeheader()
 
             num_dataset = len(self.train_set)
             if num_dataset > 0:
+                start_time = time.time()
+
                 for epoch in range(1, self.epochs + 1):
                     self.model.train()
                     train_loss, train_loss_mini, train_loss_micro, train_miou = 0, 0, 0, 0
@@ -120,7 +131,7 @@ class Train():
                             train_loss += item
                             train_loss_mini += item
                             train_loss_micro = item
-                            train_miou += iou_coef(outputs, masks)
+                            train_miou += iou_coef(outputs, masks).item()
 
                         # Back propagation
                         self.scaler.scale(loss).backward()
@@ -152,9 +163,7 @@ class Train():
 
                     # Checkpoint save
                     if epoch % self.checkpoint_step == 0:
-                        make_folder(self.checkpoint_path)
-                        torch.save(self.model.state_dict(), f'{self.checkpoint_path}epoch_{epoch}.pth')
-                        print(f'Model saved at epoch {epoch}.')
+                        self.save(self.checkpoint_path, f'{self.checkpoint_path}epoch_{epoch}.pth')
 
                     # Record
                     writer.writerow({
@@ -167,8 +176,16 @@ class Train():
                         'Val_miou': val_miou
                     })
 
+                # Test
+                test_loss, test_miou = self.eval(self.test_set)
+                print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
+
                 # Model save
-                make_folder(self.model_path)
-                torch.save(self.model.state_dict(), f'{self.model_path}model.pth')
+                self.save(self.model_path, f'{self.model_path}model.pth')
+
+                # Total train time
+                end_time = time.time()
+                total_time = end_time - start_time
+                print(f'Total Train time: {round(total_time, 3)}s, {round(total_time/60, 3)}min, {round((total_time/60)/60, 3)}h.')
             else: raise ValueError('The length of dataset must be at least 1.')
 

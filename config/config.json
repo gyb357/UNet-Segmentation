@@ -39,11 +39,11 @@
 
 
     "lr": 1e-4,
-    "epochs": 100,
+    "epochs": 300,
     "accumulation_step": 4,
-    "checkpoint_step": 20,
+    "checkpoint_step": 50,
     "show": 0.5,
-    "csv_path": "csv/csv_logg.csv",
+    "csv_path": "csv/",
     "checkpoint_path": "model/checkpoint/",
     "model_path": "model/"
 }
