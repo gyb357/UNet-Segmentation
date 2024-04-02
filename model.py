@@ -51,20 +51,30 @@ class DecoderBlock(nn.Module):
 
 
 class OutputBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, bias: bool, activation):
+    def __init__(self, in_channels: int, out_channels: int, bias: bool):
         super(OutputBlock, self).__init__()
-        layer = [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)]
-        layer.append(activation)
-        self.conv = nn.Sequential(*layer)
-
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)
+        
     def forward(self, x):
         return self.conv(x)
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, filter: int, kernel_size: int, bias: bool, dropout: float, activation: nn, checkpoint: bool):
+    def __init__(
+            self,
+            in_channels: int = 1,
+            out_channels: int = 1,
+            filter: int = 64,
+            kernel_size: int = 3,
+            bias: bool = True,
+            dropout: float = 0.0,
+            initialize_weights: bool = True,
+            gradient_checkpoint: bool = True
+    ):
         super(UNet, self).__init__()
-        self.checkpoint = checkpoint
+        self.gradient_checkpoint = gradient_checkpoint
+
+        # UNet structure
         self.e1 = EncoderBlock(in_channels, filter, kernel_size, bias, dropout)
         self.e2 = EncoderBlock(filter, filter*2, kernel_size, bias, dropout)
         self.e3 = EncoderBlock(filter*2, filter*4, kernel_size, bias, dropout)
@@ -74,13 +84,18 @@ class UNet(nn.Module):
         self.d3 = DecoderBlock(filter*8, filter*4, kernel_size, bias, dropout)
         self.d2 = DecoderBlock(filter*4, filter*2, kernel_size, bias, dropout)
         self.d1 = DecoderBlock(filter*2, filter, kernel_size, bias, dropout)
-        self.out = OutputBlock(filter, out_channels, bias, activation)
-
-    def init_weights(self, model: nn.Module):
-        for m in model.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
-
+        self.out = OutputBlock(filter, out_channels, bias)
+        
+        # Initialize weights to kaiming he_uniform
+        if initialize_weights == True:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+                    nn.init.constant_(m.bias.data, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+    
     def cp_forward(self, x):
         e1, p1 = cp(self.e1, x)
         e2, p2 = cp(self.e2, p1)
@@ -93,9 +108,13 @@ class UNet(nn.Module):
         d1 = cp(self.d1, d2, e1)
         out = self.out(d1)
         return out
-
+    
     def forward(self, x):
-        if self.checkpoint == True:
+        # Set requires_grad=True
+        if x.requires_grad == False:
+            x.requires_grad = True
+            
+        if self.gradient_checkpoint == True:
             return self.cp_forward(x)
         else:
             e1, p1 = self.e1(x)

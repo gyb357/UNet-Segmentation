@@ -9,15 +9,15 @@ class Augmentation():
     def __init__(
             self,
             channels: int = None,
-            resize: list = None,
             crop: list = None,
+            resize: list = None,
             hflip: bool = False,
             vflip: bool = False,
             p: float = 0.5
     ) -> None:
         self.channels = channels
-        self.resize = resize
         self.crop = crop
+        self.resize = resize
         self.hflip = hflip
         self.vflip = vflip
         self.p = p
@@ -32,10 +32,10 @@ class Augmentation():
 
         # Commonly applied augmentations
         for i, img in enumerate(data):
-            if isinstance(self.resize, list):
-                img = F.resize(img, self.resize)
             if isinstance(self.crop, list):
                 img = F.center_crop(img, self.crop)
+            if isinstance(self.resize, list):
+                img = F.resize(img, self.resize)
             data[i] = img
 
         # Horizon, vertical flip
@@ -89,9 +89,8 @@ class SegmentationDataset(Dataset):
         return F.to_tensor(image), F.to_tensor(mask)
     
     def __len__(self) -> int:
-        num_paths = len(self.paths['image'])
         if self.num_images != 0:
             return self.num_images
         else:
-            return num_paths
+            return len(self.paths['image'])
 

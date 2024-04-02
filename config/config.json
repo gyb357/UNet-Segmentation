@@ -1,42 +1,49 @@
 {
-    "DEVICE": "cuda",
-    "CHANNELS": 1,
-    "RESIZE": [
-        256,
-        256
-    ],
-    "CROP": [
-        192,
-        192
-    ],
-    "FLIP": true,
-    "UBIRIS_IMAGE_PATH": "dataset/ubiris/image",
-    "UBIRIS_MASK_PATH": "dataset/ubiris/mask",
-    "UBIRIS_EXTENSION": ".tiff",
-    "CASIA_IMAGE_PATH": "dataset/casia/image",
-    "CASIA_MASK_PATH": "dataset/casia/mask",
-    "CASIA_EXTENSION": ".png",
-    "NUM_IMAGES": 2250,
-    "DATASET_LENTH": {
+    "device": "cuda",
+
+
+    "channels": 1,
+    "crop": [320, 240],
+    "resize": [256, 256],
+    "flip": true,
+
+
+    "ubiris_image_path": "dataset/ubiris/image",
+    "ubiris_mask_path": "dataset/ubiris/mask",
+    "ubiris_extension": ".tiff",
+    "casia_image_path": "dataset/casia/image",
+    "casia_mask_path": "dataset/casia/mask",
+    "casia_extension": ".png",
+    "num_images": 2250,
+
+
+    "dataset_lenth": {
         "train": 0.7,
         "valid": 0.15,
         "test": 0.1
     },
-    "BATCH_SIZE": 16,
-    "SHUFFLE": true,
-    "NUM_WORKERS": 8,
-    "PIN_MEMORY": true,
-    "FILTER": 64,
-    "KERNEL_SIZE": 3,
-    "BIAS": true,
-    "DROPOUT": 0.2,
-    "CHECKPOINT": true,
-    "LR": 1e-4,
-    "EPOCHS": 100,
-    "ACCUMULATION": 4,
-    "CHECKPOINT_INTERVAL": 20,
-    "SHOW": 0.5,
-    "CSV_PATH": "csv/iris_train.csv",
-    "CHECKPOINT_PATH": "model/checkpoint",
-    "MODEL_PATH": "model/model.pth"
+
+
+    "batch_size": 16,
+    "shuffle": true,
+    "num_workers": 8,
+    "pin_memory": true,
+
+
+    "filter": 64,
+    "kernel_size": 3,
+    "bias": true,
+    "dropout": 0.2,
+    "initialize_weights": true,
+    "gradient_checkpoint": true,
+
+
+    "lr": 1e-4,
+    "epochs": 200,
+    "accumulation_step": 4,
+    "checkpoint_step": 25,
+    "show": 0.5,
+    "csv_path": "csv/csv_logg.csv",
+    "checkpoint_path": "model/checkpoint/",
+    "model_path": "model/"
 }
