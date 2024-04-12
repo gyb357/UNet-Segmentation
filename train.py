@@ -98,7 +98,7 @@ class Train():
                         outputs = self.model(inputs)
 
                         # Calculate loss
-                        loss += self.criterion(outputs, masks).item() + miou_loss(outputs, masks).item()
+                        loss += self.criterion(outputs, masks).item()# + miou_loss(outputs, masks).item()
                         miou += miou_coef(outputs, masks).item()
 
                         # Visualization
@@ -135,7 +135,7 @@ class Train():
                             outputs = self.model(inputs)
 
                             # Calculate loss
-                            loss = self.criterion(outputs, masks) + miou_loss(outputs, masks)
+                            loss = self.criterion(outputs, masks)# + miou_loss(outputs, masks)
                             loss_item = loss.item()
                             
                             train_loss += loss_item
