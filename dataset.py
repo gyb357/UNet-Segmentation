@@ -1,7 +1,7 @@
 from PIL import Image
 from torchvision.transforms import functional as F
 import random
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split, DataLoader
 import os
 
 
@@ -28,7 +28,7 @@ class Augmentation():
         # Convert image to grayscale, binary
         if self.channels == 1:
             data[0] = data[0].convert('L')
-            data[1] = data[1].convert('1')
+        data[1] = data[1].convert('1')
 
         # Commonly applied augmentations
         for i, img in enumerate(data):
@@ -93,4 +93,46 @@ class SegmentationDataset(Dataset):
             return self.num_images
         else:
             return len(self.paths['image'])
+
+
+class Dataset():
+    def __init__(
+            self,
+            dataset: SegmentationDataset,
+            dataset_split: dict,
+            batch_size: int,
+            shuffle: bool,
+            num_workers: int,
+            pin_memory: bool
+    ):
+        self.dataset = dataset
+        self.dataset_split = dataset_split
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
+
+    @staticmethod
+    def dataset_lengths(dataset: SegmentationDataset, split: dict):
+        dataset_len = len(dataset)
+        train_len = int(split['train']*dataset_len)
+        val_len = int(split['val']*dataset_len)
+        test_len = dataset_len - train_len - val_len
+        return train_len, val_len, test_len
+    
+    def get_dataloader(self) -> dict:
+        train_len, val_len, test_len = self.dataset_lengths(self.dataset, self.dataset_split)
+        train_set, val_set, test_set = random_split(self.dataset, [train_len, val_len, test_len])
+
+        loaders = {}
+        for phase, dataset in {'train': train_set, 'val': val_set, 'test': test_set}.items():
+            loaders[phase] = DataLoader(
+                dataset,
+                self.batch_size,
+                self.shuffle,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory
+            )
+        print(f'train_loader: {train_len}, valid_loader: {val_len}, test_loader: {test_len}')
+        return loaders
 

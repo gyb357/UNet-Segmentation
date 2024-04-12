@@ -1,101 +1,98 @@
 from utils import load_config
 from torch import device, cuda
-from dataset import Augmentation, SegmentationDataset
-from torch.utils.data import random_split, DataLoader
+from dataset import Augmentation, SegmentationDataset, Dataset
 from model import UNet
-from train import Train
-import torch.optim as optim
+from train import Train, Plot
+from test import Test
 
 
 config = load_config('config/config.json')
 
 
-dev = device(config['device'] if cuda.is_available() else 'cpu')
+dev = device('cuda' if cuda.is_available() else 'cpu')
 
 
 if __name__ == '__main__':
-    augmentation = Augmentation(
-        channels = config['channels'],
-        crop     = config['crop'],
-        resize   = config['resize'],
-        hflip    = config['flip'],
-        vflip    = config['flip']
-    )
-    ubiris_dataset = SegmentationDataset(
-        image_path   = config['ubiris_image_path'],
-        mask_path    = config['ubiris_mask_path'],
-        extension    = config['ubiris_extension'],
-        num_images   = config['num_images'],
-        augmentation = augmentation
-    )
-    casia_dataset = SegmentationDataset(
-        image_path   = config['casia_image_path'],
-        mask_path    = config['casia_mask_path'],
-        extension    = config['casia_extension'],
-        num_images   = config['num_images'],
-        augmentation = augmentation
-    )
+    config_train = config['train']
+    config_test = config['test']
+    config_plot = config['plot']
 
+    if config_train['train'] == True or config_test['test'] == True:
+        config_model = config['model']
+        model = UNet(
+            in_channels  = config_model['in_channels'],
+            out_channels = config_model['out_channels'],
+            filter       = config_model['filter'],
+            kernel_size  = config_model['kernel_size'],
+            bias         = config_model['bias'],
+            dropout      = config_model['dropout'],
+            init_weights = config_model['init_weights']
+        ).to(dev)
+        # print(model)
 
-    dataset_len = len(ubiris_dataset) + len(casia_dataset)
-    train_len = int(config['dataset_lenth']['train']*dataset_len)
-    valid_len = int(config['dataset_lenth']['valid']*dataset_len)
-    test_len = dataset_len - train_len - valid_len
-    total_dataset = ubiris_dataset + casia_dataset
-    print(f'ubiris_dataset: {len(ubiris_dataset)}, casia_dataset: {len(casia_dataset)}, total_dataset: {len(total_dataset)}')
+    if config_train['train'] == True:
+        config_aug = config['augmentation']
+        augmentation = Augmentation(
+            channels = config_aug['channels'],
+            crop     = config_aug['crop'],
+            resize   = config_aug['resize'],
+            hflip    = config_aug['flip'],
+            vflip    = config_aug['flip']
+        )
+    
+        config_seg = config['segmentation_dataset']
+        ubiris_dataset = SegmentationDataset(
+            image_path   = config_seg['ubiris_image_path'],
+            mask_path    = config_seg['ubiris_mask_path'],
+            extension    = config_seg['ubiris_extension'],
+            num_images   = config_seg['ubiris_num_images'],
+            augmentation = augmentation
+        )
+        casia_dataset = SegmentationDataset(
+            image_path   = config_seg['casia_image_path'],
+            mask_path    = config_seg['casia_mask_path'],
+            extension    = config_seg['casia_extension'],
+            num_images   = config_seg['casia_num_images'],
+            augmentation = augmentation
+        )
+    
+        config_data = config['dataset']
+        dataset = Dataset(
+            dataset       = ubiris_dataset + casia_dataset,
+            dataset_split = config_data['dataset_split'],
+            batch_size    = config_data['batch_size'],
+            shuffle       = config_data['shuffle'],
+            num_workers   = config_data['num_workers'],
+            pin_memory    = config_data['pin_memory']
+        )
+        
+        train = Train(
+            model             = model,
+            dataset           = dataset.get_dataloader(),
+            lr                = config_train['lr'],
+            epochs            = config_train['epochs'],
+            accumulation_step = config_train['accumulation_step'],
+            checkpoint_step   = config_train['checkpoint_step'],
+            device            = dev,
+            show              = config_train['show'],
+            csv_path          = config_train['csv_path'],
+            checkpoint_path   = config_train['checkpoint_path'],
+            model_path        = config_train['model_path']
+        )
+        train.train()
 
+    if config_plot['show'] == True:
+        Plot(
+            csv_path = config_plot['csv_path']
+        ).show_plot()
 
-    train_dataset, valid_dataset, test_dataset = random_split(total_dataset, [train_len, valid_len, test_len])
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size  = config['batch_size'],
-        shuffle     = config['shuffle'],
-        num_workers = config['num_workers'],
-        pin_memory  = config['pin_memory']
-    )
-    valid_loader = DataLoader(
-        valid_dataset,
-        batch_size  = config['batch_size'],
-        shuffle     = config['shuffle'],
-        num_workers = config['num_workers'],
-        pin_memory  = config['pin_memory']
-    )
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size  = config['batch_size'],
-        shuffle     = config['shuffle'],
-        num_workers = config['num_workers'],
-        pin_memory  = config['pin_memory']
-    )
-    print(f'train_loader: {len(train_loader)}, valid_loader: {len(valid_loader)}, test_loader: {len(test_loader)}')
-
-
-    model = UNet(
-        in_channels         = config['channels'],
-        out_channels        = config['channels'],
-        filter              = config['filter'],
-        kernel_size         = config['kernel_size'],
-        bias                = config['bias'],
-        dropout             = config['dropout'],
-        initialize_weights  = config['initialize_weights'],
-        gradient_checkpoint = config['gradient_checkpoint']
-    ).to(dev)
-    # print(model)
-
-
-    train = Train(
-        model             = model,
-        optimizer         = optim.Adam(model.parameters(), lr=config['lr']),
-        train_set         = train_loader,
-        valid_set         = valid_loader,
-        test_set          = test_loader,
-        epochs            = config['epochs'],
-        accumulation_step = config['accumulation_step'],
-        checkpoint_step   = config['checkpoint_step'],
-        device            = dev,
-        show              = config['show'],
-        csv_path          = config['csv_path'],
-        checkpoint_path   = config['checkpoint_path'],
-        model_path        = config['model_path']
-    ).train()
+    if config_test['test'] == True:
+        test = Test(
+            model      = model,
+            device     = dev,
+            threshold  = config_test['threshold'],
+            model_path = config_test['model_path'],
+            image_path = config_test['image_path']
+        )
+        test.test()
 

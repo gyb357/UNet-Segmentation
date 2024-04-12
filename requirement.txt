@@ -1,5 +1,6 @@
 pytorch==1.8.0
 torchvision==0.9.0
 cudatoolkit==10.2
-matplotlib==2.2.2
-tqdm==4.63.0
+matplotlib
+tqdm
+pandas

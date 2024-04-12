@@ -1,49 +1,64 @@
 {
-    "device": "cuda",
-
-
-    "channels": 1,
-    "crop": [320, 240],
-    "resize": [256, 256],
-    "flip": true,
-
-
-    "ubiris_image_path": "dataset/ubiris/image",
-    "ubiris_mask_path": "dataset/ubiris/mask",
-    "ubiris_extension": ".tiff",
-    "casia_image_path": "dataset/casia/image",
-    "casia_mask_path": "dataset/casia/mask",
-    "casia_extension": ".png",
-    "num_images": 2250,
-
-
-    "dataset_lenth": {
-        "train": 0.7,
-        "valid": 0.15,
-        "test": 0.1
+    "augmentation": {
+        "channels": 1,
+        "crop": [320, 240],
+        "resize": [256, 256],
+        "flip": true
     },
 
+    "segmentation_dataset": {
+        "ubiris_image_path": "dataset/ubiris/image",
+        "ubiris_mask_path": "dataset/ubiris/mask",
+        "ubiris_extension": ".tiff",
+        "ubiris_num_images": 2250,
+        "casia_image_path": "dataset/casia/image",
+        "casia_mask_path": "dataset/casia/mask",
+        "casia_extension": ".png",
+        "casia_num_images": 2250
+    },
 
-    "batch_size": 16,
-    "shuffle": true,
-    "num_workers": 8,
-    "pin_memory": true,
+    "dataset": {
+        "dataset_split": {
+            "train": 0.7,
+            "val": 0.15
+        },
+        "batch_size": 16,
+        "shuffle": true,
+        "num_workers": 8,
+        "pin_memory": true
+    },
 
+    "model": {
+        "in_channels": 1,
+        "out_channels": 1,
+        "filter": 64,
+        "kernel_size": 3,
+        "bias": true,
+        "dropout": 0.0,
+        "init_weights": true
+    },
 
-    "filter": 64,
-    "kernel_size": 3,
-    "bias": true,
-    "dropout": 0.2,
-    "initialize_weights": true,
-    "gradient_checkpoint": true,
+    "train": {
+        "train": true,
+        "lr": 1e-4,
+        "epochs": 100,
+        "accumulation_step": 4,
+        "checkpoint_step": 20,
+        "show": 0.0,
+        "csv_path": "csv/",
+        "checkpoint_path": "model/checkpoint/",
+        "model_path": "model/"
+    },
 
+    "plot": {
+        "csv_path": "csv/",
+        "show": true
+    },
 
-    "lr": 1e-4,
-    "epochs": 300,
-    "accumulation_step": 4,
-    "checkpoint_step": 50,
-    "show": 0.5,
-    "csv_path": "csv/",
-    "checkpoint_path": "model/checkpoint/",
-    "model_path": "model/"
+    "test": {
+        "test": false,
+        "threshold": 0.999,
+        "model_path": "model/model.pth",
+        "image_path": "dataset/test/test.png"
+    }
 }

@@ -2,7 +2,7 @@ from torch import Tensor
 import torch
 
 
-def iou_coef(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> float:
+def miou_coef(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
     inputs = (torch.sigmoid(inputs) > 0.5).float()
 
     # [Batch x 1 x H x W] -> [Batch x H x W]
@@ -17,4 +17,7 @@ def iou_coef(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> float:
     union = (inputs + masks - inputs*masks).sum(dim=sum_dim)
     iou = (inter + epsilon)/(union + epsilon)
     return iou.mean()
+
+def miou_loss(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
+    return 1 - miou_coef(inputs, masks, epsilon)
 
