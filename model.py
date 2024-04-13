@@ -1,5 +1,6 @@
 import torch.nn as nn
 from torch import Tensor
+from utils import operate
 import torch
 
 
@@ -10,14 +11,16 @@ class DoubleConv2d(nn.Module):
             out_channels: int,
             kernel_size: int,
             bias: bool,
+            batch_normal: bool
     ) -> None:
         super(DoubleConv2d, self).__init__()
+        norm2d = operate(batch_normal == True, nn.BatchNorm2d, nn.InstanceNorm2d)
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=1, bias=bias),
-            nn.BatchNorm2d(out_channels),
+            norm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size, stride=1, padding=1, bias=bias),
-            nn.BatchNorm2d(out_channels),
+            norm2d(out_channels),
             nn.ReLU(inplace=True)
         )
 
@@ -32,10 +35,11 @@ class EncoderBlock(nn.Module):
             out_channels: int,
             kernel_size: int,
             bias: bool,
-            dropout: float
+            dropout: float,
+            batch_normal: bool
     ) -> None:
         super(EncoderBlock, self).__init__()
-        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias)
+        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, batch_normal)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.drop = nn.Dropout(dropout)
 
@@ -53,12 +57,13 @@ class DecoderBlock(nn.Module):
             out_channels: int,
             kernel_size: int,
             bias: bool,
-            dropout: float
+            dropout: float,
+            batch_normal: bool
     ) -> None:
         super(DecoderBlock, self).__init__()
         self.trans = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2, bias=bias)
         self.drop = nn.Dropout(dropout)
-        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias)
+        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, batch_normal)
 
     def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         x = self.trans(x1)
@@ -90,28 +95,29 @@ class UNet(nn.Module):
             kernel_size: int,
             bias: bool,
             dropout: float,
+            batch_normal: bool,
             init_weights: bool,
     ) -> nn.Module:
         super(UNet, self).__init__()
         # UNet structure
-        self.e1 = EncoderBlock(in_channels, filter, kernel_size, bias, dropout)
-        self.e2 = EncoderBlock(filter, filter*2, kernel_size, bias, dropout)
-        self.e3 = EncoderBlock(filter*2, filter*4, kernel_size, bias, dropout)
-        self.e4 = EncoderBlock(filter*4, filter*8, kernel_size, bias, dropout)
-        self.neck = DoubleConv2d(filter*8, filter*16, kernel_size, bias)
-        self.d4 = DecoderBlock(filter*16, filter*8, kernel_size, bias, dropout)
-        self.d3 = DecoderBlock(filter*8, filter*4, kernel_size, bias, dropout)
-        self.d2 = DecoderBlock(filter*4, filter*2, kernel_size, bias, dropout)
-        self.d1 = DecoderBlock(filter*2, filter, kernel_size, bias, dropout)
+        self.e1 = EncoderBlock(in_channels, filter, kernel_size, bias, dropout, batch_normal)
+        self.e2 = EncoderBlock(filter, filter*2, kernel_size, bias, dropout, batch_normal)
+        self.e3 = EncoderBlock(filter*2, filter*4, kernel_size, bias, dropout, batch_normal)
+        self.e4 = EncoderBlock(filter*4, filter*8, kernel_size, bias, dropout, batch_normal)
+        self.neck = DoubleConv2d(filter*8, filter*16, kernel_size, bias, batch_normal)
+        self.d4 = DecoderBlock(filter*16, filter*8, kernel_size, bias, dropout, batch_normal)
+        self.d3 = DecoderBlock(filter*8, filter*4, kernel_size, bias, dropout, batch_normal)
+        self.d2 = DecoderBlock(filter*4, filter*2, kernel_size, bias, dropout, batch_normal)
+        self.d1 = DecoderBlock(filter*2, filter, kernel_size, bias, dropout, batch_normal)
         self.out = OutputBlock(filter, out_channels, bias)
 
         if init_weights == True:
             for m in self.modules():
                 if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-                    nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+                    nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
                     if m.bias is not None:
                         nn.init.constant_(m.bias, 0)
-                elif isinstance(m, nn.BatchNorm2d):
+                elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
                     if m.weight is not None:
                         nn.init.normal_(m.weight, 1)
                     if m.bias is not None:

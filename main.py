@@ -26,6 +26,7 @@ if __name__ == '__main__':
             kernel_size  = config_model['kernel_size'],
             bias         = config_model['bias'],
             dropout      = config_model['dropout'],
+            batch_normal = config_model['batch_normal'],
             init_weights = config_model['init_weights']
         ).to(dev)
         # print(model)
@@ -48,6 +49,13 @@ if __name__ == '__main__':
             num_images   = config_seg['ubiris_num_images'],
             augmentation = augmentation
         )
+        ubipr_dataset = SegmentationDataset(
+            image_path   = config_seg['ubipr_image_path'],
+            mask_path    = config_seg['ubipr_mask_path'],
+            extension    = config_seg['ubipr_extension'],
+            num_images   = config_seg['ubipr_num_images'],
+            augmentation = augmentation
+        )
         casia_dataset = SegmentationDataset(
             image_path   = config_seg['casia_image_path'],
             mask_path    = config_seg['casia_mask_path'],
@@ -58,7 +66,7 @@ if __name__ == '__main__':
     
         config_data = config['dataset']
         dataset = Dataset(
-            dataset       = ubiris_dataset + casia_dataset,
+            dataset       = ubiris_dataset + ubipr_dataset + casia_dataset,
             dataset_split = config_data['dataset_split'],
             batch_size    = config_data['batch_size'],
             shuffle       = config_data['shuffle'],
