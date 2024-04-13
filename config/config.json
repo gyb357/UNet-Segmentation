@@ -15,12 +15,12 @@
         "ubipr_image_path": "dataset/ubipr/image",
         "ubipr_mask_path": "dataset/ubipr/mask",
         "ubipr_extension": ".png",
-        "ubipr_num_images": 11018,
+        "ubipr_num_images": 2250,
 
         "casia_image_path": "dataset/casia/image",
         "casia_mask_path": "dataset/casia/mask",
         "casia_extension": ".png",
-        "casia_num_images": 32962
+        "casia_num_images": 2250
     },
 
     "dataset": {
@@ -28,7 +28,7 @@
             "train": 0.8,
             "val": 0.15
         },
-        "batch_size": 1,
+        "batch_size": 4,
         "shuffle": true,
         "num_workers": 8,
         "pin_memory": true
@@ -41,7 +41,7 @@
         "kernel_size": 3,
         "bias": true,
         "dropout": 0.0,
-        "batch_normal": false,
+        "batch_normal": true,
         "init_weights": true
     },
 
@@ -49,8 +49,8 @@
         "train": true,
         "lr": 1e-4,
         "epochs": 100,
-        "accumulation_step": 1,
-        "checkpoint_step": 5,
+        "accumulation_step": 4,
+        "checkpoint_step": 20,
         "show": 0.0,
         "csv_path": "csv/",
         "checkpoint_path": "model/checkpoint/",
