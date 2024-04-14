@@ -1,8 +1,8 @@
 {
     "augmentation": {
-        "channels": 1,
-        "crop": [320, 240],
-        "resize": [256, 256],
+        "channels": 3,
+        "crop": null,
+        "resize": [320, 320],
         "flip": true
     },
 
@@ -15,12 +15,7 @@
         "ubipr_image_path": "dataset/ubipr/image",
         "ubipr_mask_path": "dataset/ubipr/mask",
         "ubipr_extension": ".png",
-        "ubipr_num_images": 2250,
-
-        "casia_image_path": "dataset/casia/image",
-        "casia_mask_path": "dataset/casia/mask",
-        "casia_extension": ".png",
-        "casia_num_images": 2250
+        "ubipr_num_images": 11018
     },
 
     "dataset": {
@@ -35,7 +30,7 @@
     },
 
     "model": {
-        "in_channels": 1,
+        "in_channels": 3,
         "out_channels": 1,
         "filter": 64,
         "kernel_size": 3,
@@ -46,7 +41,7 @@
     },
 
     "train": {
-        "train": true,
+        "train": false,
         "lr": 1e-4,
         "epochs": 100,
         "accumulation_step": 4,
@@ -59,12 +54,12 @@
 
     "plot": {
         "csv_path": "csv/",
-        "show": true
+        "show": false
     },
 
     "test": {
         "test": false,
-        "threshold": 0.999,
+        "threshold": 0.9,
         "model_path": "model/model.pth",
         "image_path": "dataset/test/test.png"
     }

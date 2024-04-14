@@ -1,4 +1,3 @@
-casia dataset download: https://www.kaggle.com/datasets/musabbirarrafi/casia-iris-degradation
 ubiris v2 dataset download: http://iris.di.ubi.pt/ubiris2.html
 ubipr dataset download: http://iris.di.ubi.pt/ubipr.html
 
