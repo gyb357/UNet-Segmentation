@@ -86,6 +86,7 @@ if __name__ == '__main__':
         Plot(
             csv_path = config_plot['csv_path']
         ).show_plot()
+        # tensorboard --logdir=
 
     if config_test['test'] == True:
         test = Test(

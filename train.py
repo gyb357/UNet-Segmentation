@@ -3,12 +3,13 @@ from torch.utils.data import DataLoader
 from torch import device, Tensor
 import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
+import csv
+from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from utils import make_folder, tensor_to_numpy
 import torch
 from tqdm import tqdm
 from score import miou_coef, miou_loss
-import csv
 import time
 import pandas as pd
 
@@ -52,14 +53,19 @@ class Train():
         self.checkpoint_path = checkpoint_path
         self.model_path = model_path
 
+        # Dataset
         self.train_set = dataset['train']
         self.val_set = dataset['val']
         self.test_set = dataset['test']
 
+        # Train modules
         self.optim = optim.Adam(model.parameters(), lr)
         self.criterion = nn.BCEWithLogitsLoss().to(device)
         self.scaler = GradScaler()
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, 'max', patience=5)
+
+        # Tensorboard
+        self.tensorboard = SummaryWriter()
 
     def save(self, save_path: str, save_name: str) -> None:
         make_folder(save_path)
@@ -128,7 +134,7 @@ class Train():
                     # Train
                     for i, (inputs, masks) in enumerate(tqdm(self.train_set), start=1):
                         inputs, masks = inputs.to(self.device), masks.to(self.device)
-                        
+
                         # Mixed precision learning: FP32 -> FP16
                         with autocast():
                             # Forward propagation
@@ -137,7 +143,7 @@ class Train():
                             # Calculate loss
                             loss = self.criterion(outputs, masks)# + miou_loss(outputs, masks)
                             loss_item = loss.item()
-                            
+
                             train_loss += loss_item
                             train_loss_mini += loss_item
                             train_loss_micro = loss_item
@@ -161,7 +167,7 @@ class Train():
                             # Initialize gradient to zero
                             self.optim.zero_grad()
                             train_loss_mini /= self.accumulation_step
-                            
+
                     train_loss /= dataset_len
                     train_miou /= dataset_len
                     print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
@@ -177,15 +183,21 @@ class Train():
 
                     # Record
                     writer.writerow({
-                        columns[0]: epoch,            # Epoch
-                        columns[1]: train_loss,       # Train_loss
-                        columns[2]: train_loss_mini,  # Train_loss_mini
-                        columns[3]: train_loss_micro, # Train_loss_micro
-                        columns[4]: train_miou,       # Train_miou
-                        columns[5]: val_loss,         # Val_loss
-                        columns[6]: val_miou          # Val_miou
+                        columns[0]: epoch,
+                        columns[1]: train_loss,
+                        columns[2]: train_loss_mini,
+                        columns[3]: train_loss_micro,
+                        columns[4]: train_miou,
+                        columns[5]: val_loss,
+                        columns[6]: val_miou
                     })
-                    
+                    self.tensorboard.add_scalar(columns[1], train_loss, epoch)
+                    self.tensorboard.add_scalar(columns[2], train_loss_mini, epoch)
+                    self.tensorboard.add_scalar(columns[3], train_loss_micro, epoch)
+                    self.tensorboard.add_scalar(columns[4], train_miou, epoch)
+                    self.tensorboard.add_scalar(columns[5], val_loss, epoch)
+                    self.tensorboard.add_scalar(columns[6], val_miou, epoch)
+
                 # Test
                 test_loss, test_miou = self.eval(self.test_set)
                 print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
@@ -197,6 +209,8 @@ class Train():
                 end_time = time.time()
                 total_time = end_time - start_time
                 print(f'Total Train time: {round(total_time, 3)}s, {round(total_time/60, 3)}min, {round((total_time/60)/60, 3)}h.')
+
+                self.tensorboard.close()
             else: raise ValueError('The length of dataset must be at least 1.')
 
 

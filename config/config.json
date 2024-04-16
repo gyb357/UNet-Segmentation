@@ -41,7 +41,7 @@
     },
 
     "train": {
-        "train": false,
+        "train": true,
         "lr": 1e-4,
         "epochs": 100,
         "accumulation_step": 4,
@@ -54,7 +54,7 @@
 
     "plot": {
         "csv_path": "csv/",
-        "show": false
+        "show": true
     },
 
     "test": {
