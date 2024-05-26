@@ -1,8 +1,8 @@
-python==3.6
+python==3.6.13
 pytorch==1.8.0
 torchvision==0.9.0
-cudatoolkit==10.2
+cudatoolkit==10.2.89
 matplotlib==2.2.2
 tqdm==4.63.0
 pandas==1.1.5
-tensorboard==1.15.0
+tensorborad==1.15.0
