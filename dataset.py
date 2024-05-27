@@ -1,4 +1,4 @@
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 from utils import makedirs
 import os
 import numpy as np
@@ -15,34 +15,36 @@ class MaskDatasetGenerator():
             label_path: str,
             mask_path: str,
             mask_size: Tuple[int, int],
-            mask_extension: str
+            mask_extension: str,
+            mask_fill: int = 255
     ) -> None:
         self.label_path = label_path
         self.mask_path = mask_path
         self.mask_size = mask_size
         self.mask_extension = mask_extension
+        self.mask_fill = mask_fill
         makedirs(mask_path)
 
     def __call__(self) -> None:
         for label in os.listdir(self.label_path):
-            labels = open(os.path.join(self.label_path, label))
+            label_file_path = os.path.join(self.label_path, label)
 
-            coordinate = []
-            for line in labels.readlines():
-                line.replace('\n', '')
-                coordinate.append(line.split(' '))
+            with open(label_file_path, 'r') as file:
+                coordinates = [line.strip().split(' ') for line in file.readlines()]
 
             zeros = np.zeros(self.mask_size, dtype=np.uint8)
-            mask = Image.fromarray(zeros.squeeze(), mode='L')
+            mask = Image.fromarray(zeros, mode='L')
             draw = ImageDraw.Draw(mask)
 
-            for coords in coordinate:
-                polygon = []
-                for i in range(1, len(coords), 2):
-                    x = int(float(coords[i])*self.mask_size[0])
-                    y = int(float(coords[i + 1])*self.mask_size[1])
-                    polygon.append((x, y))
-                draw.polygon(polygon, fill=255)
+            for coords in coordinates:
+                polygon = [
+                    (
+                        int(float(coords[i])*self.mask_size[0]),
+                        int(float(coords[i + 1])*self.mask_size[1])
+                    )
+                    for i in range(1, len(coords), 2)
+                ]
+                draw.polygon(polygon, fill=self.mask_fill)
 
             save_path = os.path.join(self.mask_path, label.replace('.txt', '') + self.mask_extension)
             mask.save(save_path)
@@ -74,28 +76,25 @@ class Augmentation():
     def __call__(self, image: Image, mask: Image) -> Tuple[Image.Image, Image.Image]:
         if self.channels == 1:
             image = F.to_grayscale(image, 1)
-        image = F.adjust_saturation(image, R.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
-        image = F.adjust_brightness(image, R.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
 
         mask = F.to_tensor(mask)/255.0
         mask = F.to_pil_image(mask)
 
-        hflip_p = R.random()
-        vflip_p = R.random()
-        angle = R.randrange(-self.rotate, self.rotate)
+        if self.resize is not None:
+            image, mask = F.resize(image, self.resize), F.resize(mask, self.resize)
+        if self.hflip and R.random() < self.p:
+            image, mask = F.hflip(image), F.hflip(mask)
+        if self.vflip and R.random() < self.p:
+            image, mask = F.vflip(image), F.vflip(mask)
+        if self.rotate > 0:
+            angle = R.uniform(-self.rotate, self.rotate)
+            image, mask = F.rotate(image, angle), F.rotate(mask, angle)
 
-        data = [image, mask]
-        for i, img in enumerate(data):
-            if self.resize is not None:
-                img = F.resize(img, self.resize)
-            if self.hflip and hflip_p < self.p:
-                img = F.hflip(img)
-            if self.vflip and vflip_p < self.p:
-                img = F.vflip(img)
-            if self.rotate != 0:
-                img = F.rotate(img, angle)
-            data[i] = img
-        return data[0], data[1]
+        if self.saturation > 0:
+            image = F.adjust_saturation(image, R.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
+        if self.brightness > 0:
+            image = F.adjust_brightness(image, R.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
+        return image, mask
 
 
 class SegmentationDataLoader(Dataset):
@@ -114,7 +113,7 @@ class SegmentationDataLoader(Dataset):
         self.augmentation = augmentation
         self.path = self.get_path(self.get_file(image_path), self.get_file(mask_path))
 
-    def get_path(self, images: list, masks: list) -> Dict[list, list]:
+    def get_path(self, images: list, masks: list) -> Dict[str, List[str]]:
         path = {
             'image': [],
             'mask': []
@@ -125,7 +124,7 @@ class SegmentationDataLoader(Dataset):
                 path['mask'].append(os.path.join(self.mask_path, mask))
         return path
     
-    def get_file(self, path: str) -> list:
+    def get_file(self, path: str) -> List[str]:
         return [f for f in os.listdir(path) if f.endswith(self.extension)]
     
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor]:
@@ -140,16 +139,16 @@ class SegmentationDataLoader(Dataset):
         return image, mask
     
     def __len__(self) -> int:
-        if self.num_images != 0 and self.num_images <= self.path['image']:
+        if self.num_images != 0 and self.num_images <= len(self.path['image']):
             return self.num_images
-        else: return len(self.path['image'])
+        return len(self.path['image'])
 
 
 class SegmentationDataset():
     def __init__(
             self,
             dataset_loader: SegmentationDataLoader,
-            dataset_split: dict,
+            dataset_split: Dict[str, float],
             batch_size: int,
             shuffle: bool = False,
             num_workers: int = 0,
@@ -169,7 +168,7 @@ class SegmentationDataset():
         test = dataset_len - train - val
         return train, val, test
     
-    def get_loader(self, debug: bool = False) -> dict:
+    def get_loader(self, debug: bool = False) -> Dict[str, DataLoader]:
         train_len, val_len, test_len = self.get_length()
         train_set, val_set, test_set = random_split(self.dataset_loader, [train_len, val_len, test_len])
 

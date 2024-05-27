@@ -1,112 +1,132 @@
 from typing import Optional, Callable
 import torch.nn as nn
-from module import DoubleConv2d, EncoderBlock, BackBoneEncoderBlock, DecoderBlock
 from torch import Tensor
+from resnet import resnet18, resnet34, resnet50
+import torch
 
 
-class UNet(nn.Module):
-    in_channels: int = 64
-    filters = [64, 128, 256, 512]
+def norm_layer(norm: Optional[Callable[..., nn.Module]]):
+    if norm is None:
+        return nn.BatchNorm2d
+    else: return norm
 
+
+class DoubleConv2d(nn.Module):
     def __init__(
             self,
-            channels: int,
-            num_classes: int,
-            backbone: str = None,
-            pretrained: bool = False,
-            freeze_grad: bool = False,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 3,
+            bias: bool = False,
+            norm: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
+        super(DoubleConv2d, self).__init__()
+        self.layer = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=1, bias=bias),
+            norm_layer(norm)(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size, stride=1, padding=1, bias=bias),
+            norm_layer(norm)(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.layer(x)
+
+
+class EncoderBlock(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
             kernel_size: int = 3,
             bias: bool = False,
             norm: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0
     ) -> None:
-        super(UNet, self).__init__()
-        if backbone is None:
-            encoder = []
-            encoder.append(EncoderBlock(channels, self.filters[0], kernel_size, bias, norm, dropout))
-
-            for i in range(len(self.filters) - 1):
-                encoder.append(EncoderBlock(self.filters[i], self.filters[i + 1], kernel_size, bias, norm, dropout))
-            self.encoder = nn.Sequential(*encoder)
-        else:
-            self.encoder = BackBoneEncoderBlock(channels, backbone, pretrained, freeze_grad)
-            self.filters = self.encoder.filters
-
-
-        self.center = DoubleConv2d(self.filters[3]*2, self.filters[3]*2, kernel_size, bias, norm)
+        super(EncoderBlock, self).__init__()
+        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, norm)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-
-
-        decoder = []
-        decoder1 = DecoderBlock(self.filters[3]*2, self.filters[3], kernel_size, bias, norm, dropout)
-        decoder2 = DecoderBlock(self.filters[3], self.filters[2], kernel_size, bias, norm, dropout)
-        decoder3 = DecoderBlock(self.filters[2], self.filters[1], kernel_size, bias, norm, dropout)
-        decoder.append(decoder1)
-        decoder.append(decoder2)
-        decoder.append(decoder3)
-
-        if backbone in ['resnet18', 'resnet34']:
-            decoder4 = DecoderBlock(self.filters[1], self.filters[0], kernel_size, bias, norm, dropout)
-            decoder5 = DecoderBlock(self.filters[1], self.filters[0], kernel_size, bias, norm, dropout, self.filters[0], self.filters[0])
-            decoder.append(decoder4)
-            decoder.append(decoder5)
-        if backbone == 'resnet50':
-            decoder4 = DecoderBlock(self.filters[0]*3, self.filters[0]*2, kernel_size, bias, norm, dropout, self.filters[1], self.filters[0]*2)
-            decoder5 = DecoderBlock(self.filters[0] + 3, self.filters[0], kernel_size, bias, norm, dropout, self.filters[0]*2, self.filters[0])
-            decoder.append(decoder4)
-            decoder.append(decoder5)
-        self.decoder = nn.Sequential(*decoder)
-
-
-        self.out = nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
-
-
+        self.drop = nn.Dropout(dropout)
 
     def forward(self, x: Tensor) -> Tensor:
-        # non backbone forward
-        # e1, p1 = self.encoder[0](x)
-        # e2, p2 = self.encoder[1](p1)
-        # e3, p3 = self.encoder[2](p2)
-        # e4, p4 = self.encoder[3](p3)
-        # c = self.center(p4)
-        # d4 = self.decoder[0](c, e4)
-        # d3 = self.decoder[1](d4, e3)
-        # d2 = self.decoder[2](d3, e2)
-        # d1 = self.decoder[3](d2, e1)
-        # out = self.out(d1)
-        # return out
+        x = self.conv(x)
+        p = self.pool(x)
+        p = self.drop(p)
+        return x, p
 
-        # resnet18, resnet34 forward
-        # e1, _, e2, e3, e4, e5 = self.encoder(x)
-        # c = self.center(e5)
-        # c = self.pool(c)
-        # d5 = self.decoder[0](c, e5)
-        # d4 = self.decoder[1](d5, e4)
-        # d3 = self.decoder[2](d4, e3)
-        # d2 = self.decoder[3](d3, e2)
-        # d1 = self.decoder[4](d2, e1)
-        # out = self.out(d1)
-        # return out
 
-        # resnet50 forward
-        e1, _, e2, e3, e4, e5 = self.encoder(x)
-        c = self.center(e5)
-        d5 = self.decoder[0](c, e4)
-        d4 = self.decoder[1](d5, e3)
-        d3 = self.decoder[2](d4, e2)
-        d2 = self.decoder[3](d3, e1)
-        d1 = self.decoder[4](d2, x)
-        out = self.out(d1)
-        return out
-    
+class BackBoneEncoderBlock(nn.Module):
+    def __init__(
+            self,
+            channels: int,
+            backbone: str,
+            pretrained: bool,
+            freeze_grad: bool
+    ) -> None:
+        super(BackBoneEncoderBlock, self).__init__()
+        backbones = {
+            'resnet18': (resnet18, [64, 128, 256, 512]),
+            'resnet34': (resnet34, [64, 128, 256, 512]),
+            'resnet50': (resnet50, [64, 256, 512, 1024])
+        }
+        if backbone not in backbones:
+            raise ValueError('Backbone must be resnet18, resnet34, or resnet50.')
+        
+        model, self.filters = backbones[backbone]
+        model = model(channels, pretrained=pretrained)
 
-model = UNet(
-    channels=3,
-    num_classes=1,
-    backbone='resnet50',
-    pretrained=True
-).cuda()
-# print(model)
-inp = torch.rand((16, 3, 320, 320)).cuda()
-out = model(inp)
-print(out)
+        if freeze_grad:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        self.input_layer = nn.Sequential(
+            model.conv1,
+            model.bn1,
+            model.relu
+        )
+        self.pool = model.pool
+
+        self.encoder1 = model.layer1
+        self.encoder2 = model.layer2
+        self.encoder3 = model.layer3
+        self.encoder4 = model.layer4
+
+    def forward(self, x: Tensor) -> Tensor:
+        x1 = self.input_layer(x)
+        p = self.pool(x1)
+        x2 = self.encoder1(p)
+        x3 = self.encoder2(x2)
+        x4 = self.encoder3(x3)
+        x5 = self.encoder4(x4)
+        return x1, p, x2, x3, x4, x5
+
+
+class DecoderBlock(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 3,
+            bias: bool = False,
+            norm: Optional[Callable[..., nn.Module]] = None,
+            dropout: float = 0.0,
+            up_in_channels: int = None,
+            up_out_channels: int = None
+    ) -> None:
+        super(DecoderBlock, self).__init__()
+        if up_in_channels is None:
+            up_in_channels = in_channels
+        if up_out_channels is None:
+            up_out_channels = out_channels
+
+        self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2, bias=bias)
+        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, norm)
+        self.drop = nn.Dropout(dropout)
+
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
+        x = self.trans(x1)
+        x = self.conv(torch.cat([x2, x], dim=1))
+        x = self.drop(x)
+        return x
+
