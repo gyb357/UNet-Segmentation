@@ -4,10 +4,12 @@ from torch import Tensor
 import torch
 
 
-pretrained_weights = {
-    'resnet18': 'model/pretrained/resnet18-5c106cde.pth',
-    'resnet34': 'model/pretrained/resnet34-333f7ec4.pth',
-    'resnet50': 'model/pretrained/resnet50-19c8e357.pth'
+imagenet1k_weights = {
+    'resnet18': 'model/pretrained/resnet18-f37072fd.pth',
+    'resnet34': 'model/pretrained/resnet34-b627a593.pth',
+    'resnet50': 'model/pretrained/resnet50-11ad3fa6.pth',
+    'resnet101': 'model/pretrained/resnet101-cd907fc2.pth',
+    'resnet152': 'model/pretrained/resnet152-f82ba261.pth'
 }
 
 
@@ -187,7 +189,7 @@ class ResNet(nn.Module):
 
 def load_pretrained_weights(pretrained: bool, model: ResNet, name: str):
     if pretrained:
-        model.load_state_dict(torch.load(pretrained_weights[name]))
+        model.load_state_dict(torch.load(imagenet1k_weights[name]))
     return model
 
 
@@ -225,4 +227,28 @@ def resnet50(
 ) -> ResNet:
     model = ResNet(Bottleneck3Conv, [3, 4, 6, 3], channels, num_classes, bias, norm, init_weights)
     return load_pretrained_weights(pretrained, model, 'resnet50')
+
+
+def resnet101(
+        channels: int = 3,
+        num_classes: int = 1000,
+        bias: bool = False,
+        norm: Optional[Callable[..., nn.Module]] = None,
+        init_weights: bool = True,
+        pretrained: bool = False
+) -> ResNet:
+    model = ResNet(Bottleneck3Conv, [3, 4, 23, 3], channels, num_classes, bias, norm, init_weights)
+    return load_pretrained_weights(pretrained, model, 'resnet101')
+
+
+def resnet152(
+        channels: int = 3,
+        num_classes: int = 1000,
+        bias: bool = False,
+        norm: Optional[Callable[..., nn.Module]] = None,
+        init_weights: bool = True,
+        pretrained: bool = False
+) -> ResNet:
+    model = ResNet(Bottleneck3Conv, [3, 8, 36, 3], channels, num_classes, bias, norm, init_weights)
+    return load_pretrained_weights(pretrained, model, 'resnet152')
 
