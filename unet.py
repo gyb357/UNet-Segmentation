@@ -1,8 +1,17 @@
+from resnet import resnet18, resnet34, resnet50, resnet101, resnet152
 from typing import Optional, Callable, List
 import torch.nn as nn
 from torch import Tensor
-from resnet import resnet18, resnet34, resnet50, resnet101, resnet152
 import torch
+
+
+backbones = {
+    'resnet18': (resnet18, [64, 128, 256, 512]),
+    'resnet34': (resnet34, [64, 128, 256, 512]),
+    'resnet50': (resnet50, [64, 256, 512, 1024, 2048]),
+    'resnet101': (resnet101, [64, 256, 512, 1024, 2048]),
+    'resnet152': (resnet152, [64, 256, 512, 1024, 2048])
+}
 
 
 def norm_layer(norm: Optional[Callable[..., nn.Module]]):
@@ -56,53 +65,6 @@ class EncoderBlock(nn.Module):
         return x, p
 
 
-class BackboneEncoderBlock(nn.Module):
-    def __init__(
-            self,
-            channels: int,
-            backbone: str,
-            pretrained: bool,
-            freeze_grad: bool
-    ) -> None:
-        super(BackboneEncoderBlock, self).__init__()
-        backbones = {
-            'resnet18': (resnet18, [64, 128, 256, 512]),
-            'resnet34': (resnet34, [64, 128, 256, 512]),
-            'resnet50': (resnet50, [64, 256, 512, 1024]),
-            'resnet101': (resnet101, [64, 256, 512, 1024]),
-            'resnet152': (resnet152, [64, 256, 512, 1024])
-        }
-        if backbone not in backbones:
-            raise ValueError('Backbone must be resnet: 18, 34, 50, 101, 152.')
-        
-        model, self.filters = backbones[backbone]
-        model = model(channels, pretrained=pretrained)
-
-        if freeze_grad:
-            for param in model.parameters():
-                param.requires_grad = False
-
-        self.input = nn.Sequential(
-            model.conv1,
-            model.bn1,
-            model.relu
-        )
-        self.pool = model.pool
-        self.encoder1 = model.layer1
-        self.encoder2 = model.layer2
-        self.encoder3 = model.layer3
-        self.encoder4 = model.layer4
-
-    def forward(self, x: Tensor) -> Tensor:
-        x1 = self.input(x)
-        p = self.pool(x1)
-        x2 = self.encoder1(p)
-        x3 = self.encoder2(x2)
-        x4 = self.encoder3(x3)
-        x5 = self.encoder4(x4)
-        return x1, p, x2, x3, x4, x5
-
-
 class DecoderBlock(nn.Module):
     def __init__(
             self,
@@ -132,39 +94,77 @@ class DecoderBlock(nn.Module):
         return x
 
 
+class EncoderBlocks(nn.Module):
+    def __init__(
+            self,
+            channels: int,
+            filters: List[int],
+            backbone: Optional[str] = None,
+            pretrained: bool = False,
+            freeze_grad: bool = False,
+            kernel_size: int = 3,
+            bias: bool = False,
+            norm: Optional[Callable[..., nn.Module]] = None,
+            dropout: float = 0.0
+    ) -> None:
+        super(EncoderBlocks, self).__init__()
+        self.backbone = backbone
+
+        if backbone is None:
+            model, filters = backbones[backbone]
+
+
 class DecoderBlocks(nn.Module):
     def __init__(
             self,
-            backbone: Optional[str],
             filters: List[int],
-            kernel_size: int,
-            bias: bool,
-            norm: Optional[Callable[..., nn.Module]],
-            dropout: float
+            backbone: Optional[str] = None,
+            kernel_size: int = 3,
+            bias: bool = False,
+            norm: Optional[Callable[..., nn.Module]] = None,
+            dropout: float = 0.0,
     ) -> None:
         super(DecoderBlocks, self).__init__()
         self.backbone = backbone
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        # self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-        # decoder = [
-        #     DecoderBlock(filters[3]*2, filters[3], kernel_size, bias, norm, dropout),
-        #     DecoderBlock(filters[3], filters[2], kernel_size, bias, norm, dropout),
-        #     DecoderBlock(filters[2], filters[1], kernel_size, bias, norm, dropout),
-        # ]
-        # if backbone in ['resnet18', 'resnet34']:
-        #     decoder += [
-        #         DecoderBlock(filters[1], filters[0], kernel_size, bias, norm, dropout),
-        #         DecoderBlock(filters[1], filters[0], kernel_size, bias, norm, dropout, filters[0], filters[0])
-        #     ]
-        # if backbone == ['resnet50', 'resnet101', 'resnet152']
-        # self.decoder = nn.Sequential(*decoder)
+        decoder = []
+        for i in range(len(filters) - 1):
+            decoder.append(DecoderBlock(filters[-1 - i], filters[-2 - i], kernel_size, bias, norm, dropout))
+
+        if backbone is not None:
+            decoder.append(DecoderBlock(filters[1], filters[0], kernel_size, bias, norm, dropout, filters[0], filters[0]))
+        self.decoder = nn.Sequential(*decoder)
 
     def forward(self, e: List[Tensor], c: Tensor) -> Tensor:
         if self.backbone is not None:
             c = self.pool(c)
 
         d = c
-        for i, dec_layer in enumerate(self.decoder):
-            d = dec_layer(d, e[-i - 1])
+        for i, decoder in enumerate(self.decoder):
+            d = decoder(d, e[-i - 1])
         return d
 
+
+class UNet(nn.Module):
+    def __init__(
+            self,
+            channels: int,
+            num_classes: int,
+            backbone: Optional[str] = None,
+            pretrained: bool = False,
+            freeze_grad: bool = False,
+            kernel_size: int = 3,
+            bias: bool = False,
+            norm: Optional[Callable[..., nn.Module]] = None,
+            dropout: float = 0.0
+    ) -> None:
+        super(UNet, self).__init__()
+        self.filters = [64, 128, 256, 512, 1024]
+
+    def forward(self, x):
+        pass
+
+
+model = UNet(3, 1)
+print(model)

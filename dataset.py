@@ -145,26 +145,33 @@ class SegmentationDataLoader(Dataset):
 
 
 class SegmentationDataset():
+    dataset_type: dict = {'train': 0.8, 'val': 0.1}
+    
     def __init__(
             self,
             dataset_loader: SegmentationDataLoader,
-            dataset_split: Dict[str, float],
+            dataset_dict: Dict[str, float],
             batch_size: int,
             shuffle: bool = False,
             num_workers: int = 0,
             pin_memory: bool = False
     ) -> None:
         self.dataset_loader = dataset_loader
-        self.dataset_split = dataset_split
+        self.dataset_dict = dataset_dict
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.num_workers = num_workers
         self.pin_memory = pin_memory
 
+        if 'train' not in self.dataset_dict:
+            self.dataset_dict['train'] = self.dataset_type['train']
+        if 'val' not in self.dataset_dict:
+            self.dataset_dict['val'] = self.dataset_type['val']
+
     def get_length(self) -> Tuple[int, int, int]:
         dataset_len = len(self.dataset_loader)
-        train = int(self.dataset_split['train']*dataset_len)
-        val = int(self.dataset_split['val']*dataset_len)
+        train = int(self.dataset_dict['train']*dataset_len)
+        val = int(self.dataset_dict['val']*dataset_len)
         test = dataset_len - train - val
         return train, val, test
     
