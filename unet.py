@@ -3,6 +3,7 @@ from typing import Optional, Callable, List
 import torch.nn as nn
 from torch import Tensor
 import torch
+import torch.nn.functional as F
 
 
 backbones = {
@@ -99,7 +100,7 @@ class EncoderBlocks(nn.Module):
             self,
             channels: int,
             filters: List[int],
-            backbone: Optional[str] = None,
+            backbone: str = None,
             pretrained: bool = False,
             freeze_grad: bool = False,
             kernel_size: int = 3,
@@ -108,17 +109,27 @@ class EncoderBlocks(nn.Module):
             dropout: float = 0.0
     ) -> None:
         super(EncoderBlocks, self).__init__()
+        self.filters = filters
         self.backbone = backbone
 
-        if backbone is None:
+        if backbone is not None:
             model, filters = backbones[backbone]
+            self.encoder = model(channels, pretrained=pretrained)
+            self.filters = filters
+
+            if freeze_grad:
+                for param in self.encoder.parameters():
+                    param.requires_grad = False
+                    
+    def forward(self, x: Tensor) -> List[Tensor]:
+        pass
 
 
 class DecoderBlocks(nn.Module):
     def __init__(
             self,
             filters: List[int],
-            backbone: Optional[str] = None,
+            backbone: str = None,
             kernel_size: int = 3,
             bias: bool = False,
             norm: Optional[Callable[..., nn.Module]] = None,
@@ -151,21 +162,30 @@ class UNet(nn.Module):
             self,
             channels: int,
             num_classes: int,
-            backbone: Optional[str] = None,
+            backbone: str = None,
             pretrained: bool = False,
             freeze_grad: bool = False,
             kernel_size: int = 3,
             bias: bool = False,
             norm: Optional[Callable[..., nn.Module]] = None,
-            dropout: float = 0.0
+            dropout: float = 0.0,
     ) -> None:
         super(UNet, self).__init__()
         self.filters = [64, 128, 256, 512, 1024]
+        self.encoder = EncoderBlocks(channels, self.filters, backbone, pretrained, freeze_grad, kernel_size, bias, norm, dropout)
+        self.filters = self.encoder.filters
 
-    def forward(self, x):
+        self.center = DoubleConv2d(self.filters[-2], self.filters[-2]*2, kernel_size, bias, norm)
+        self.decoder = DecoderBlocks(self.filters, backbone, kernel_size, bias, norm, dropout)
+        self.out = nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
+
+    def forward(self, x: Tensor) -> Tensor:
         pass
 
 
-model = UNet(3, 1)
+model = UNet(3, 1, 'resnet18')
 print(model)
+# inp = torch.rand((16, 3, 320, 320))
+# out = model(inp)
+# print(out)
 

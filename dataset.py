@@ -1,5 +1,4 @@
 from typing import Tuple, Dict, List
-from utils import makedirs
 import os
 import numpy as np
 from PIL import Image, ImageDraw
@@ -23,7 +22,7 @@ class MaskDatasetGenerator():
         self.mask_size = mask_size
         self.mask_extension = mask_extension
         self.mask_fill = mask_fill
-        makedirs(mask_path)
+        os.makedirs(mask_path, exist_ok=True)
 
     def __call__(self) -> None:
         for label in os.listdir(self.label_path):

@@ -1,15 +1,8 @@
 from torch import Tensor
-import torch
 
 
-def miou_coef(
-        inputs: Tensor,
-        masks: Tensor,
-        epsilon: float = 1e-6
-) -> Tensor:
-    inputs = (torch.sigmoid(inputs) > 0.5).float()
-
-    # [Batch x 1 x H x W] -> [Batch x H x W]
+def miou_coef(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
+    inputs = (inputs > 0.5).float()
     inputs = inputs.squeeze(1)
     masks = masks.squeeze(1)
 
@@ -23,10 +16,6 @@ def miou_coef(
     return iou.mean()
 
 
-def miou_loss(
-        inputs: Tensor,
-        masks: Tensor,
-        epsilon: float = 1e-6
-) -> Tensor:
+def miou_loss(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
     return 1 - miou_coef(inputs, masks, epsilon)
 
