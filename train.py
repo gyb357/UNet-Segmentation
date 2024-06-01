@@ -176,6 +176,9 @@ class Trainer():
             self.scheduler.step(val_miou)
             print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
 
+            test_loss, test_miou = self.eval(self.test_set)
+            print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
+
             csv_row = dict(zip(columns, [epoch, train_loss, train_loss_mini, train_loss_micro, train_miou, val_loss, val_miou]))
             self.csv_writer.writerow(csv_row)
 

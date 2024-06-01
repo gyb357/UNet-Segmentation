@@ -10,7 +10,7 @@ import torch
 from utils import tensor_to_numpy
 
 
-class Test:
+class Tester():
     def __init__(
             self,
             model: UNet,

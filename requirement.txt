@@ -6,3 +6,4 @@ matplotlib==2.2.2
 tqdm==4.63.0
 pandas==1.1.5
 tensorborad==1.15.0
+pyyaml==6.0.1
