@@ -1,0 +1,52 @@
+model:
+  channels: 3
+  num_classes: 1
+  backbone: 'resnet34'
+  pretrained: true
+  freeze_grad: false
+  kernel_size: 3
+  bias: false
+  norm: null
+  dropout: 0.0
+
+train:
+  train: true
+  lr: 0.0001
+  epochs: 100
+  accumulation_step: 4
+  checkpoint_step: 20
+  show_time: 0.2
+  show_plt: true
+
+test:
+  test: false
+  thres_hold: 0.5
+  model_path: 'checkpoints/model.pth'
+  image_path: 'data/test/images'
+
+plot:
+  example_plot_config: 'example_value'
+
+augmentation:
+  channels: 3
+  resize: [320, 320]
+  hflip: true
+  vflip: true
+  rotate: 45
+  saturation: 0.5
+  brightness: 0.5
+  factor: 1.0
+  p: 0.5
+
+dataloader:
+  image_path: 'dataset/image'
+  mask_path: 'dataset/mask'
+  extension: '.jpg'
+  num_images: 0
+
+dataset:
+  dataset_dict: {'train': 0.85, 'val': 0.1}
+  batch_size: 4
+  shuffle: true
+  num_workers: 8
+  pin_memory: true

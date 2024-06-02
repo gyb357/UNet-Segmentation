@@ -108,9 +108,6 @@ class Trainer():
         self.csv_writer, self.csv_file = get_csv_DictWriter(csv_path, csv_name, columns)
         self.tensorboard = SummaryWriter()
 
-    def __del__(self):
-        self.csv_file.close()
-
     def save_model(self, save_path: str, save_name: str) -> None:
         os.makedirs(save_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(save_path, save_name))
@@ -190,4 +187,6 @@ class Trainer():
 
         elapsed_time = time() - start_time
         print(f'Training completed in: {elapsed_time:.2f} seconds')
+
+        self.tensorboard.close()
 

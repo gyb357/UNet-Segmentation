@@ -69,7 +69,7 @@ def main() -> None:
 
             train = Trainer(
                 model=model,
-                dataset=dataset,
+                dataset=dataset.get_loader(debug=True),
                 lr=train_config['lr'],
                 device=dev,
                 epochs=train_config['epochs'],
@@ -78,6 +78,7 @@ def main() -> None:
                 show_time=train_config['show_time'],
                 show_plt=train_config['show_plt']
             )
+            train.train()
 
             if test_config['test']:
                 test = Tester(
@@ -89,4 +90,8 @@ def main() -> None:
                     image_path=test_config['image_path']
                 )
                 test.test()
+
+
+if __name__ == '__main__':
+    main()
 
