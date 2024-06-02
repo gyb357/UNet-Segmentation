@@ -193,6 +193,7 @@ class UNet(nn.Module):
             bias: bool = False,
             norm: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0,
+            init_weights: bool = True
     ) -> None:
         super(UNet, self).__init__()
         self.filters = [64, 128, 256, 512, 1024]
@@ -203,6 +204,25 @@ class UNet(nn.Module):
         self.center = DoubleConv2d(self.filters[-2], self.filters[-1], kernel_size, bias, norm)
         self.decoder = DecoderBlocks(self.filters, backbone, kernel_size, bias, norm, dropout)
         self.out = nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
+
+        if init_weights:
+            for m in self.center.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+                    
+            for m in self.decoder.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+
+            nn.init.kaiming_normal_(self.out.weight, mode='fan_out', nonlinearity='relu')
+            if self.out.bias is not None:
+                nn.init.constant_(self.out.bias, 0)
 
     def forward(self, x: Tensor) -> Tensor:
         e = self.encoder(x)
