@@ -1,8 +1,10 @@
 from resnet import resnet18, resnet34, resnet50, resnet101, resnet152
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Tuple
 import torch.nn as nn
+from utils import operate
 from torch import Tensor
 import torch
+from torch.utils.checkpoint import checkpoint
 
 
 backbones = {
@@ -14,10 +16,8 @@ backbones = {
 }
 
 
-def norm_layer(norm: Optional[Callable[..., nn.Module]]):
-    if norm is None:
-        return nn.BatchNorm2d
-    else: return norm
+def norm_layer(norm: Optional[Callable[..., nn.Module]]) -> nn.Module:
+    return operate(norm is None, nn.BatchNorm2d, norm)
 
 
 class DoubleConv2d(nn.Module):
@@ -95,6 +95,8 @@ class DecoderBlock(nn.Module):
 
 
 class EncoderBlocks(nn.Module):
+    backbone_layers: List[str] = ['layer1', 'layer2', 'layer3', 'layer4']
+
     def __init__(
             self,
             channels: int,
@@ -113,16 +115,13 @@ class EncoderBlocks(nn.Module):
 
         if backbone is None:
             self.encoder = nn.ModuleList()
-
             in_channels = channels
             for out_channels in filters[:-1]:
                 self.encoder.append(EncoderBlock(in_channels, out_channels, kernel_size, bias, norm, dropout))
                 in_channels = out_channels
-
         else:
             model, self.filters = backbones[backbone]
             self.encoder = model(channels, pretrained=pretrained)
-
             if freeze_grad:
                 for param in self.encoder.parameters():
                     param.requires_grad = False
@@ -134,24 +133,25 @@ class EncoderBlocks(nn.Module):
             )
             self.pool = self.encoder.pool
 
-    def forward(self, x: Tensor) -> List[Tensor]:
-        e = []
+    def forward(self, x: Tensor) -> Tuple[List[Tensor], Tensor]:
+        x_out = []
 
         if self.backbone is None:
             p = x
             for encoder in self.encoder:
                 x, p = encoder(p)
-                e.append(p)
-
+                x_out.append(x)
+                e_out = p
         else:
             x = self.inputs(x)
             p = self.pool(x)
-            e.append(x)
+            x_out.append(x)
             for name, module in self.encoder.named_children():
-                if name in ['layer1', 'layer2', 'layer3', 'layer4']:
+                if name in self.backbone_layers:
                     p = module(p)
-                    e.append(p)
-        return e
+                    x_out.append(p)
+                    e_out = p
+        return x_out, e_out
 
 
 class DecoderBlocks(nn.Module):
@@ -165,6 +165,7 @@ class DecoderBlocks(nn.Module):
             dropout: float = 0.0,
     ) -> None:
         super(DecoderBlocks, self).__init__()
+        self.backbone = backbone
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.decoder = nn.ModuleList()
 
@@ -174,14 +175,21 @@ class DecoderBlocks(nn.Module):
         if backbone is not None:
             self.decoder.append(DecoderBlock(filters[1], filters[0], kernel_size, bias, norm, dropout, filters[0], filters[0]))
 
-    def forward(self, e: List[Tensor], c: Tensor) -> Tensor:
+    def forward(self, x_out: List[Tensor], c: Tensor) -> Tensor:
         d = self.pool(c)
+
         for i, decoder in enumerate(self.decoder):
-            d = decoder(d, e[-1 - i])
+            x = x_out[-1 - i]
+            if self.backbone is None:
+                x = self.pool(x)
+
+            d = decoder(d, x)
         return d
 
 
 class UNet(nn.Module):
+    filters: List[int] = [64, 128, 256, 512, 1024]
+
     def __init__(
             self,
             channels: int,
@@ -196,38 +204,44 @@ class UNet(nn.Module):
             init_weights: bool = True
     ) -> None:
         super(UNet, self).__init__()
-        self.filters = [64, 128, 256, 512, 1024]
+        self.num_classes = num_classes
 
         self.encoder = EncoderBlocks(channels, self.filters, backbone, pretrained, freeze_grad, kernel_size, bias, norm, dropout)
         self.filters = self.encoder.filters
 
         self.center = DoubleConv2d(self.filters[-2], self.filters[-1], kernel_size, bias, norm)
         self.decoder = DecoderBlocks(self.filters, backbone, kernel_size, bias, norm, dropout)
-        self.out = nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
+        self.out = nn.Sequential(
+            nn.ConvTranspose2d(self.filters[0], self.filters[0], kernel_size=2, stride=2),
+            nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
+        )
 
         if init_weights:
-            for m in self.center.modules():
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
-                    
-            for m in self.decoder.modules():
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
+            init_target = operate(backbone is None, self.modules(), [self.center, self.decoder, self.out])
 
-            nn.init.kaiming_normal_(self.out.weight, mode='fan_out', nonlinearity='relu')
-            if self.out.bias is not None:
-                nn.init.constant_(self.out.bias, 0)
+            for module in init_target:
+                for m in module.modules():
+                    if isinstance(m, nn.Conv2d):
+                        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                        if m.bias is not None:
+                            nn.init.constant_(m.bias, 0)
+                    if isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
+                        nn.init.constant_(m.weight, 1)
+                        nn.init.constant_(m.bias, 0)
+                        
+    def forward(self, x: Tensor) -> Tensor:
+        x_out, e_out = self.encoder(x)
+        c = self.center(e_out)
+        d = self.decoder(x_out, c)
+        return self.out(d)
+
+
+class EnsembleUNet(nn.Module):
+    def __init__(self, unet_models: List[UNet]) -> None:
+        super(EnsembleUNet, self).__init__()
+        self.unet_models = unet_models
 
     def forward(self, x: Tensor) -> Tensor:
-        e = self.encoder(x)
-        c = self.center(e[-1])
-        d = self.decoder(e, c)
-        o = self.out(d)
-        return o
+        out = [unet(x) for unet in self.unet_models]
+        return torch.mean(torch.stack(out), dim=0)
 

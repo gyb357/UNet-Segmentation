@@ -26,9 +26,9 @@ class MaskDatasetGenerator():
 
     def __call__(self) -> None:
         for label in os.listdir(self.label_path):
-            label_file_path = os.path.join(self.label_path, label)
+            label_files = os.path.join(self.label_path, label)
 
-            with open(label_file_path, 'r') as file:
+            with open(label_files, 'r') as file:
                 coordinates = [line.strip().split(' ') for line in file.readlines()]
 
             zeros = np.zeros(self.mask_size, dtype=np.uint8)
@@ -50,6 +50,9 @@ class MaskDatasetGenerator():
 
 
 class Augmentation():
+    norm_mean: List[float] = [0.485, 0.456, 0.406]
+    norm_std: List[float] = [0.229, 0.224, 0.225]
+
     def __init__(
             self,
             channels: int,
@@ -60,7 +63,8 @@ class Augmentation():
             saturation: float = 0,
             brightness: float = 0,
             factor: float = 1,
-            p: float = 0.5
+            p: float = 0.5,
+            normalize: bool = False
     ) -> None:
         self.channels = channels
         self.resize = resize
@@ -71,6 +75,7 @@ class Augmentation():
         self.brightness = brightness
         self.factor = factor
         self.p = p
+        self.normalize = normalize
 
     def __call__(self, image: Image, mask: Image) -> Tuple[Image.Image, Image.Image]:
         if self.channels == 1:
@@ -93,6 +98,10 @@ class Augmentation():
             image = F.adjust_saturation(image, R.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
         if self.brightness > 0:
             image = F.adjust_brightness(image, R.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
+
+        if self.normalize:
+            image = F.normalize(image, self.norm_mean, self.norm_std)
+            mask = F.normalize(mask, self.norm_mean, self.norm_std)
         return image, mask
 
 
@@ -144,33 +153,33 @@ class SegmentationDataLoader(Dataset):
 
 
 class SegmentationDataset():
-    dataset_type: dict = {'train': 0.8, 'val': 0.1}
-    
+    default_split: dict = {'train': 0.8, 'val': 0.1}
+
     def __init__(
             self,
             dataset_loader: SegmentationDataLoader,
-            dataset_dict: Dict[str, float],
+            dataset_split: Dict[str, float],
             batch_size: int,
             shuffle: bool = False,
             num_workers: int = 0,
             pin_memory: bool = False
     ) -> None:
         self.dataset_loader = dataset_loader
-        self.dataset_dict = dataset_dict
+        self.dataset_split = dataset_split
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.num_workers = num_workers
         self.pin_memory = pin_memory
 
-        if 'train' not in self.dataset_dict:
-            self.dataset_dict['train'] = self.dataset_type['train']
-        if 'val' not in self.dataset_dict:
-            self.dataset_dict['val'] = self.dataset_type['val']
+        if 'train' not in dataset_split:
+            self.dataset_split['train'] = self.default_split['train']
+        if 'val' not in dataset_split:
+            self.dataset_split['val'] = self.default_split['val']
 
     def get_length(self) -> Tuple[int, int, int]:
         dataset_len = len(self.dataset_loader)
-        train = int(self.dataset_dict['train']*dataset_len)
-        val = int(self.dataset_dict['val']*dataset_len)
+        train = int(self.dataset_split['train']*dataset_len)
+        val = int(self.dataset_split['val']*dataset_len)
         test = dataset_len - train - val
         return train, val, test
     
@@ -187,7 +196,7 @@ class SegmentationDataset():
                 num_workers=self.num_workers,
                 pin_memory=self.pin_memory
             )
-
+            
         if debug:
             print(f'train_set: {train_len}, valid_set: {val_len}, test_set: {test_len}')
         return loader

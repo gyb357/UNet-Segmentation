@@ -3,18 +3,14 @@ from utils import load_config
 from unet import UNet
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
 from train import Trainer
-from test import Tester
 
 
 config_path = 'config/config.yaml'
-
-
 dev = device('cuda' if cuda.is_available() else 'cpu')
 
 
-def main() -> None:
+if __name__ == '__main__':
     config = load_config(config_path)
-
     train_config = config['train']
     test_config = config['test']
     plot_config = config['plot']
@@ -79,19 +75,4 @@ def main() -> None:
                 show_plt=train_config['show_plt']
             )
             train.train()
-
-            if test_config['test']:
-                test = Tester(
-                    model=model,
-                    device=dev,
-                    augmentation=augmentation,
-                    threshold=test_config['thres_hold'],
-                    model_path=test_config['model_path'],
-                    image_path=test_config['image_path']
-                )
-                test.test()
-
-
-if __name__ == '__main__':
-    main()
 

@@ -1,5 +1,6 @@
 import torch.nn as nn
 from typing import Optional, Callable, Type, Union, List
+from utils import operate
 from torch import Tensor
 import torch
 
@@ -31,10 +32,8 @@ def conv3x3(
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=bias)
 
 
-def norm_layer(norm: Optional[Callable[..., nn.Module]]):
-    if norm is None:
-        return nn.BatchNorm2d
-    else: return norm
+def norm_layer(norm: Optional[Callable[..., nn.Module]]) -> nn.Module:
+    return operate(norm is None, nn.BatchNorm2d, norm)
 
 
 class Bottleneck2Conv(nn.Module):
@@ -112,6 +111,8 @@ class Bottleneck3Conv(nn.Module):
 
 class ResNet(nn.Module):
     in_channels: int = 64
+    filters = [64, 128, 256, 512]
+    strides = [1, 2, 2, 2]
 
     def __init__(
             self,
@@ -129,19 +130,21 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        self.layer1 = self.bottleneck_layer(bottleneck, 64, 1, bias, norm, layers[0])
-        self.layer2 = self.bottleneck_layer(bottleneck, 128, 2, bias, norm, layers[1])
-        self.layer3 = self.bottleneck_layer(bottleneck, 256, 2, bias, norm, layers[2])
-        self.layer4 = self.bottleneck_layer(bottleneck, 512, 2, bias, norm, layers[3])
+        self.layer1 = self.bottleneck_layer(bottleneck, self.filters[0], self.strides[0], bias, norm, layers[0])
+        self.layer2 = self.bottleneck_layer(bottleneck, self.filters[1], self.strides[1], bias, norm, layers[1])
+        self.layer3 = self.bottleneck_layer(bottleneck, self.filters[2], self.strides[2], bias, norm, layers[2])
+        self.layer4 = self.bottleneck_layer(bottleneck, self.filters[3], self.strides[3], bias, norm, layers[3])
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten(1)
-        self.fc = nn.Linear(512*bottleneck.expansion, num_classes)
+        self.fc = nn.Linear(self.filters[3]*bottleneck.expansion, num_classes)
 
         if init_weights:
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
                     nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
                 if isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)

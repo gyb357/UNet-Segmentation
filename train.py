@@ -1,23 +1,22 @@
 from typing import List, Tuple, Dict
-import os
 import csv
+import os
 from torch import Tensor
 import matplotlib.pyplot as plt
 from utils import tensor_to_numpy
 import pandas as pd
-from unet import UNet
 from torch.utils.data import DataLoader
-import torch
+from torch import device
 import torch.optim as optim
 import torch.nn as nn
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
-from time import time
-from tqdm import tqdm
+import torch
 from miou import miou_coef
+from tqdm import tqdm
+import time
 
 
-csv_name = 'train_logg.csv'
 columns = [
     'Epoch',
     'Train_loss',
@@ -27,17 +26,15 @@ columns = [
     'Val_loss',
     'Val_miou'
 ]
-csv_path = 'csv/'
-checkpoint_path = 'model/checkpoint/'
-model_path = 'model/'
 
 
 def get_csv_DictWriter(path: str, name: str, column: List[str]) -> Tuple[csv.DictWriter, any]:
     os.makedirs(path, exist_ok=True)
-    csv_file = open(os.path.join(path, name), mode='w', newline='')
-    writer = csv.DictWriter(csv_file, fieldnames=column)
-    writer.writeheader()
-    return writer, csv_file
+
+    with open(os.path.join(path, name), mode='w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=column)
+        writer.writeheader()
+    return writer, file
 
 
 def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
@@ -55,15 +52,16 @@ def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
         plt.close()
 
 
-def show_plot() -> None:
-    data = pd.read_csv(os.path.join(csv_path, csv_name))
-    x = data[columns[0]]
+def show_plot(path: str, name: str, column: List[str]) -> None:
+    data = pd.read_csv(os.path.join(path, name))
+    x = data[column[0]]
 
     plt.figure()
-    for col in columns[1:]:
+
+    for col in column[1:]:
         plt.plot(x, data[col], label=col)
 
-    plt.xlabel(columns[0])
+    plt.xlabel(column[0])
     plt.legend()
     plt.show()
 
@@ -71,21 +69,16 @@ def show_plot() -> None:
 class Trainer():
     def __init__(
             self,
-            model: UNet,
+            model: nn.Module,
             dataset: Dict[str, DataLoader],
             lr: float,
-            device: torch.device,
+            device: device,
             epochs: int,
             accumulation_step: int,
             checkpoint_step: int,
-            show_time: float,
-            show_plt: bool
+            show_time: int,
+            show_plt: int
     ) -> None:
-        required_keys = ['train', 'val', 'test']
-        if not all(key in dataset for key in required_keys):
-            missing_keys = [key for key in required_keys if key not in dataset]
-            raise ValueError(f"Dataset is missing the following keys: {', '.join(missing_keys)}")
-
         self.model = model
         self.dataset = dataset
         self.lr = lr
@@ -96,22 +89,24 @@ class Trainer():
         self.show_time = show_time
         self.show_plt = show_plt
 
+        # Dataset
         self.train_set = dataset['train']
         self.val_set = dataset['val']
         self.test_set = dataset['test']
 
+        # Train modules
         self.optim = optim.Adam(model.parameters(), lr)
         self.criterion = nn.BCEWithLogitsLoss().to(device)
         self.scaler = GradScaler()
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, 'max', patience=5)
 
-        self.csv_writer, self.csv_file = get_csv_DictWriter(csv_path, csv_name, columns)
+        # Tensorboard
         self.tensorboard = SummaryWriter()
 
-    def save_model(self, save_path: str, save_name: str) -> None:
-        os.makedirs(save_path, exist_ok=True)
-        torch.save(self.model.state_dict(), os.path.join(save_path, save_name))
-        print(f'Model saved at {save_name}.')
+    def save_model(self, path: str, name: str) -> None:
+        os.makedirs(path, exist_ok=True)
+        torch.save(self.model.state_dict(), os.path.join(path, name))
+        print(f'Model saved at {name}.')
 
     def eval(self, dataset: DataLoader) -> Tuple[float, float]:
         dataset_len = len(dataset)
@@ -124,9 +119,14 @@ class Trainer():
             for inputs, masks in tqdm(dataset):
                 inputs, masks = inputs.to(self.device), masks.to(self.device)
                 with autocast():
+                    # Forward propagation
                     outputs = self.model(inputs)
+
+                    # Calculate loss
                     loss += self.criterion(outputs, masks).item()
                     miou += miou_coef(outputs, masks).item()
+
+                    # Visualization
                     show_image(self.show_time, outputs, masks)
 
         loss /= dataset_len
@@ -136,8 +136,8 @@ class Trainer():
     def train(self) -> None:
         if len(self.train_set) == 0:
             raise ValueError('The length of training dataset must be at least 1.')
-
-        start_time = time()
+        
+        start_time = time.time()
 
         for epoch in range(1, self.epochs + 1):
             self.model.train()
@@ -145,23 +145,36 @@ class Trainer():
 
             for i, (inputs, masks) in enumerate(tqdm(self.train_set), start=1):
                 inputs, masks = inputs.to(self.device), masks.to(self.device)
+
+                # Mixed precision learning: FP32 -> FP16
                 with autocast():
+                    # Forward propagation
                     outputs = self.model(inputs)
+
+                    # Calculate loss
                     loss = self.criterion(outputs, masks)
                     loss_item = loss.item()
-
                     train_loss += loss_item
                     train_loss_mini += loss_item
                     train_loss_micro = loss_item
                     train_miou += miou_coef(outputs, masks).item()
 
+                # Back propagation
                 self.scaler.scale(loss).backward()
 
+                # Gradient accumulation
                 if i % self.accumulation_step == 0:
+                    # Unscale: FP16 -> FP32
                     self.scaler.unscale_(self.optim)
+
+                    # Prevent gradient exploding
                     nn.utils.clip_grad_norm_(self.model.parameters(), 1)
+
+                    # Gradient update
                     self.scaler.step(self.optim)
                     self.scaler.update()
+
+                    # Initialize gradient to zero
                     self.optim.zero_grad()
                     train_loss_mini /= self.accumulation_step
 
@@ -169,22 +182,23 @@ class Trainer():
             train_miou /= len(self.train_set)
             print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
 
+            # Evaluation
             val_loss, val_miou = self.eval(self.val_set)
             self.scheduler.step(val_miou)
             print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
 
+            # Test
             test_loss, test_miou = self.eval(self.test_set)
             print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
 
-            csv_row = dict(zip(columns, [epoch, train_loss, train_loss_mini, train_loss_micro, train_miou, val_loss, val_miou]))
-            self.csv_writer.writerow(csv_row)
-
-            for col, val in zip(columns[1:], [train_loss, train_loss_mini, train_loss_micro, train_miou, val_loss, val_miou]):
-                self.tensorboard.add_scalar(col, val, epoch)
-
+            # Checkpoint save
             if epoch % self.checkpoint_step == 0:
                 self.save_model(checkpoint_path, f'epoch_{epoch}.pth')
 
+        # Model save
+        self.save_model(model_path, f'{model_path}model.pth')
+
+        # Total train time
         elapsed_time = time() - start_time
         print(f'Training completed in: {elapsed_time:.2f} seconds')
 

@@ -1,8 +1,11 @@
 from torch import Tensor
+import torch
 
 
 def miou_coef(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
-    inputs = (inputs > 0.5).float()
+    inputs = (torch.sigmoid(inputs) > 0.5).float()
+
+    # [Batch x 1 x H x W] -> [Batch x H x W]
     inputs = inputs.squeeze(1)
     masks = masks.squeeze(1)
 
