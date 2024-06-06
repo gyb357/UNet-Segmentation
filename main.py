@@ -56,7 +56,7 @@ if __name__ == '__main__':
             dataset_config = config['dataset']
             dataset = SegmentationDataset(
                 dataset_loader=dataloader,
-                dataset_dict=dataset_config['dataset_dict'],
+                dataset_split=dataset_config['dataset_split'],
                 batch_size=dataset_config['batch_size'],
                 shuffle=dataset_config['shuffle'],
                 num_workers=dataset_config['num_workers'],
@@ -74,5 +74,5 @@ if __name__ == '__main__':
                 show_time=train_config['show_time'],
                 show_plt=train_config['show_plt']
             )
-            train.train()
+            train.train(train_config['checkpoint_path'], train_config['model_path'])
 

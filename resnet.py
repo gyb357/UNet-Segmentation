@@ -121,8 +121,8 @@ class Bottleneck3Conv(nn.Module):
 
 class ResNet(nn.Module):
     in_channels: int = 64
-    filters = [64, 128, 256, 512]
-    strides = [1, 2, 2, 2]
+    filters: List[int] = [64, 128, 256, 512]
+    strides: List[int] = [1, 2, 2, 2]
 
     def __init__(
             self,
@@ -200,7 +200,7 @@ class ResNet(nn.Module):
         return x
 
 
-RESNET_CONFIG = {
+RESNET_CONFIGS = {
     'resnet18': (Bottleneck2Conv, [2, 2, 2, 2], [64, 128, 256, 512, 1024]),
     'resnet34': (Bottleneck2Conv, [3, 4, 6, 3], [64, 128, 256, 512, 1024]),
     'resnet50': (Bottleneck3Conv, [3, 4, 6, 3], [64, 256, 512, 1024, 2048]),
@@ -218,7 +218,7 @@ def resnet(
         init_weights: bool = True,
         pretrained: bool = False
 ) -> Tuple[ResNet, List[int]]:
-    bottleneck, layers, filters = RESNET_CONFIG[name]
+    bottleneck, layers, filters = RESNET_CONFIGS[name]
     model = ResNet(bottleneck, layers, channels, num_classes, bias, norm, init_weights)
 
     if pretrained:

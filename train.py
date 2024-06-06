@@ -4,7 +4,6 @@ import os
 from torch import Tensor
 import matplotlib.pyplot as plt
 from utils import tensor_to_numpy
-import pandas as pd
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch import device
@@ -50,20 +49,6 @@ def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
         plt.show(block=False)
         plt.pause(show_time)
         plt.close()
-
-
-def show_plot(path: str, name: str, columns: List[str]) -> None:
-    data = pd.read_csv(os.path.join(path, name))
-    x = data[columns[0]]
-
-    plt.figure()
-
-    for col in columns[1:]:
-        plt.plot(x, data[col], label=col)
-
-    plt.xlabel(columns[0])
-    plt.legend()
-    plt.show()
 
 
 class Trainer():

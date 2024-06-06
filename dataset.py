@@ -153,7 +153,7 @@ class SegmentationDataLoader(Dataset):
 
 
 class SegmentationDataset():
-    default_split: dict = {'train': 0.8, 'val': 0.1}
+    default_split: Dict[str, float] = {'train': 0.8, 'val': 0.1}
 
     def __init__(
             self,

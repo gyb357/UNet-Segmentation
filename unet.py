@@ -14,6 +14,9 @@ def norm_layer(norm: Optional[Callable[..., nn.Module]]) -> nn.Module:
 
 
 class DoubleConv2d(nn.Module):
+    stride: int = 1
+    padding: int = 1
+
     def __init__(
             self,
             in_channels: int,
@@ -24,10 +27,10 @@ class DoubleConv2d(nn.Module):
     ) -> None:
         super(DoubleConv2d, self).__init__()
         self.layer = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=1, bias=bias),
+            nn.Conv2d(in_channels, out_channels, kernel_size, self.stride, self.padding, bias=bias),
             norm_layer(norm)(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size, stride=1, padding=1, bias=bias),
+            nn.Conv2d(out_channels, out_channels, kernel_size, self.stride, self.padding, bias=bias),
             norm_layer(norm)(out_channels),
             nn.ReLU(inplace=True)
         )
@@ -37,6 +40,9 @@ class DoubleConv2d(nn.Module):
 
 
 class EncoderBlock(nn.Module):
+    pool_kernel_size: int = 2
+    pool_stride: int = 2
+
     def __init__(
             self,
             in_channels: int,
@@ -48,7 +54,7 @@ class EncoderBlock(nn.Module):
     ) -> None:
         super(EncoderBlock, self).__init__()
         self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, norm)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool = nn.MaxPool2d(self.pool_kernel_size, self.pool_stride)
         self.drop = nn.Dropout(dropout)
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
@@ -59,6 +65,9 @@ class EncoderBlock(nn.Module):
 
 
 class DecoderBlock(nn.Module):
+    trans_kernel_size: int = 2
+    trans_stride: int = 2
+
     def __init__(
             self,
             in_channels: int,
@@ -76,7 +85,7 @@ class DecoderBlock(nn.Module):
         if up_out_channels is None:
             up_out_channels = out_channels
 
-        self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2, bias=bias)
+        self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, self.trans_kernel_size, self.trans_stride, bias=bias)
         self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, norm)
         self.drop = nn.Dropout(dropout)
 
@@ -181,7 +190,9 @@ class DecoderBlocks(nn.Module):
 
 
 class UNet(nn.Module):
-    filters: List[int] = [64, 128, 256, 512]
+    filters: List[int] = [64, 128, 256, 512, 1024]
+    trans_kernel_size: int = 2
+    trans_stride: int = 2
 
     def __init__(
             self,
@@ -197,15 +208,13 @@ class UNet(nn.Module):
             init_weights: bool = True
     ) -> None:
         super(UNet, self).__init__()
-        self.num_classes = num_classes
-
         self.encoder = EncoderBlocks(channels, self.filters, backbone, pretrained, freeze_grad, kernel_size, bias, norm, dropout)
         self.filters = self.encoder.filters
 
         self.center = DoubleConv2d(self.filters[-2], self.filters[-1], kernel_size, bias, norm)
         self.decoder = DecoderBlocks(self.filters, backbone, kernel_size, bias, norm, dropout)
         self.out = nn.Sequential(
-            nn.ConvTranspose2d(self.filters[0], self.filters[0], kernel_size=2, stride=2),
+            nn.ConvTranspose2d(self.filters[0], self.filters[0], self.trans_kernel_size, self.trans_stride),
             nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
         )
 

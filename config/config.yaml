@@ -17,6 +17,8 @@ train:
   checkpoint_step: 20
   show_time: 0.2
   show_plt: true
+  checkpoint_path: 'model/checkpoint'
+  model_path: 'model'
 
 test:
   test: false
@@ -45,7 +47,7 @@ dataloader:
   num_images: 0
 
 dataset:
-  dataset_dict: {'train': 0.85, 'val': 0.1}
+  dataset_split: {'train': 0.85, 'val': 0.1}
   batch_size: 4
   shuffle: true
   num_workers: 8
