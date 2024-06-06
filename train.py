@@ -38,13 +38,15 @@ def get_csv_writer(path: str, name: str, columns: List[str]) -> Tuple[csv.DictWr
 
 def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
     if show_time > 0:
+        output = torch.sigmoid(output)
+
         plt.subplot(1, 2, 1)
         plt.title('Predicted mask')
-        plt.imshow(tensor_to_numpy(output))
+        plt.imshow(tensor_to_numpy(output[0][0]))
 
         plt.subplot(1, 2, 2)
         plt.title('Ground truth')
-        plt.imshow(tensor_to_numpy(mask))
+        plt.imshow(tensor_to_numpy(mask[0][0]))
         
         plt.show(block=False)
         plt.pause(show_time)

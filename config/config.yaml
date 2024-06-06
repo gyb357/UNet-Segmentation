@@ -22,7 +22,7 @@ augmentation:
   brightness: 0.5
   factor: 1
   p: 0.5
-  normalize: true
+  normalize: false
 
 
 dataloader:

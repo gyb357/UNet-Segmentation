@@ -100,6 +100,8 @@ class Augmentation():
             image = F.adjust_brightness(image, R.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
 
         if self.normalize:
+            image = F.to_tensor(image)
+            mask = F.to_tensor(mask)
             image = F.normalize(image, self.norm_mean, self.norm_std)
             mask = F.normalize(mask, self.norm_mean, self.norm_std)
         return image, mask
@@ -142,8 +144,10 @@ class SegmentationDataLoader(Dataset):
         if self.augmentation is not None:
             image, mask = self.augmentation(image, mask)
 
-        image = F.to_tensor(image)
-        mask = F.to_tensor(mask)
+        if not isinstance(image, Tensor):
+            image = F.to_tensor(image)
+        if not isinstance(mask, Tensor):
+            mask = F.to_tensor(mask)
         return image, mask
     
     def __len__(self) -> int:
