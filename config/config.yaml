@@ -27,7 +27,7 @@ dataloader:
   image_path: 'dataset/image'
   mask_path: 'dataset/mask'
   extension: '.jpg'
-  num_images: 10
+  num_images: 0
 
 dataset:
   dataset_split: {'train': 0.85, 'val': 0.1}
