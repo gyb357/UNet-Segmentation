@@ -1,9 +1,9 @@
-from resnet import resnet
 from typing import Optional, Callable, List, Tuple
 import torch.nn as nn
 from utils import operate
 from torch import Tensor
 import torch
+from resnet import resnet
 
 
 # resnet50 or higher is under development
