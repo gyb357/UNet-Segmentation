@@ -1,11 +1,21 @@
 import torch.nn as nn
-from typing import Optional, Callable, Type, Union, List
+from typing import Optional, Callable, Type, Union, List, Tuple
 from utils import operate
 from torch import Tensor
 import torch
 
 
-imagenet1k_weights = {
+# Download link
+# https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html
+
+# resnet18 v1: https://download.pytorch.org/models/resnet18-f37072fd.pth
+# resnet34 v1: https://download.pytorch.org/models/resnet34-b627a593.pth
+# resnet50 v2: https://download.pytorch.org/models/resnet50-11ad3fa6.pth
+# resnet101 v2: https://download.pytorch.org/models/resnet101-cd907fc2.pth
+# resnet152 v2: https://download.pytorch.org/models/resnet152-f82ba261.pth
+
+
+IMAGENET_1K_WEIGHTS = {
     'resnet18': 'model/pretrained/resnet18-f37072fd.pth',
     'resnet34': 'model/pretrained/resnet34-b627a593.pth',
     'resnet50': 'model/pretrained/resnet50-11ad3fa6.pth',
@@ -190,68 +200,28 @@ class ResNet(nn.Module):
         return x
 
 
-def load_pretrained_weights(pretrained: bool, model: ResNet, name: str):
+RESNET_CONFIG = {
+    'resnet18': (Bottleneck2Conv, [2, 2, 2, 2], [64, 128, 256, 512, 1024]),
+    'resnet34': (Bottleneck2Conv, [3, 4, 6, 3], [64, 128, 256, 512, 1024]),
+    'resnet50': (Bottleneck3Conv, [3, 4, 6, 3], [64, 256, 512, 1024, 2048]),
+    'resnet101': (Bottleneck3Conv, [3, 4, 23, 3], [64, 256, 512, 1024, 2048]),
+    'resnet152': (Bottleneck3Conv, [3, 8, 36, 3], [64, 256, 512, 1024, 2048])
+}
+
+
+def resnet(
+        name: str,
+        channels: int = 3,
+        num_classes: int = 1000,
+        bias: bool = False,
+        norm: Optional[Callable[..., nn.Module]] = None,
+        init_weights: bool = True,
+        pretrained: bool = False
+) -> Tuple[ResNet, List[int]]:
+    bottleneck, layers, filters = RESNET_CONFIG[name]
+    model = ResNet(bottleneck, layers, channels, num_classes, bias, norm, init_weights)
+
     if pretrained:
-        model.load_state_dict(torch.load(imagenet1k_weights[name]))
-    return model
-
-
-def resnet18(
-        channels: int = 3,
-        num_classes: int = 1000,
-        bias: bool = False,
-        norm: Optional[Callable[..., nn.Module]] = None,
-        init_weights: bool = True,
-        pretrained: bool = False
-) -> ResNet:
-    model = ResNet(Bottleneck2Conv, [2, 2, 2, 2], channels, num_classes, bias, norm, init_weights)
-    return load_pretrained_weights(pretrained, model, 'resnet18')
-
-
-def resnet34(
-        channels: int = 3,
-        num_classes: int = 1000,
-        bias: bool = False,
-        norm: Optional[Callable[..., nn.Module]] = None,
-        init_weights: bool = True,
-        pretrained: bool = False
-) -> ResNet:
-    model = ResNet(Bottleneck2Conv, [3, 4, 6, 3], channels, num_classes, bias, norm, init_weights)
-    return load_pretrained_weights(pretrained, model, 'resnet34')
-
-
-def resnet50(
-        channels: int = 3,
-        num_classes: int = 1000,
-        bias: bool = False,
-        norm: Optional[Callable[..., nn.Module]] = None,
-        init_weights: bool = True,
-        pretrained: bool = False
-) -> ResNet:
-    model = ResNet(Bottleneck3Conv, [3, 4, 6, 3], channels, num_classes, bias, norm, init_weights)
-    return load_pretrained_weights(pretrained, model, 'resnet50')
-
-
-def resnet101(
-        channels: int = 3,
-        num_classes: int = 1000,
-        bias: bool = False,
-        norm: Optional[Callable[..., nn.Module]] = None,
-        init_weights: bool = True,
-        pretrained: bool = False
-) -> ResNet:
-    model = ResNet(Bottleneck3Conv, [3, 4, 23, 3], channels, num_classes, bias, norm, init_weights)
-    return load_pretrained_weights(pretrained, model, 'resnet101')
-
-
-def resnet152(
-        channels: int = 3,
-        num_classes: int = 1000,
-        bias: bool = False,
-        norm: Optional[Callable[..., nn.Module]] = None,
-        init_weights: bool = True,
-        pretrained: bool = False
-) -> ResNet:
-    model = ResNet(Bottleneck3Conv, [3, 8, 36, 3], channels, num_classes, bias, norm, init_weights)
-    return load_pretrained_weights(pretrained, model, 'resnet152')
+        model.load_state_dict(torch.load(IMAGENET_1K_WEIGHTS[name]))
+    return model, filters
 

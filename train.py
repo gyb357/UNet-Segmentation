@@ -5,10 +5,10 @@ from torch import Tensor
 import matplotlib.pyplot as plt
 from utils import tensor_to_numpy
 import pandas as pd
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch import device
 import torch.optim as optim
-import torch.nn as nn
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
 import torch
@@ -17,7 +17,7 @@ from tqdm import tqdm
 import time
 
 
-columns = [
+COLUMNS = [
     'Epoch',
     'Train_loss',
     'Train_loss_mini',
@@ -28,12 +28,12 @@ columns = [
 ]
 
 
-def get_csv_DictWriter(path: str, name: str, column: List[str]) -> Tuple[csv.DictWriter, any]:
+def get_csv_writer(path: str, name: str, columns: List[str]) -> Tuple[csv.DictWriter, any]:
     os.makedirs(path, exist_ok=True)
 
-    with open(os.path.join(path, name), mode='w', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=column)
-        writer.writeheader()
+    file = open(os.path.join(path, name), mode='w', newline='')
+    writer = csv.DictWriter(file, fieldnames=columns)
+    writer.writeheader()
     return writer, file
 
 
@@ -52,16 +52,16 @@ def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
         plt.close()
 
 
-def show_plot(path: str, name: str, column: List[str]) -> None:
+def show_plot(path: str, name: str, columns: List[str]) -> None:
     data = pd.read_csv(os.path.join(path, name))
-    x = data[column[0]]
+    x = data[columns[0]]
 
     plt.figure()
 
-    for col in column[1:]:
+    for col in columns[1:]:
         plt.plot(x, data[col], label=col)
 
-    plt.xlabel(column[0])
+    plt.xlabel(columns[0])
     plt.legend()
     plt.show()
 
@@ -108,12 +108,12 @@ class Trainer():
         torch.save(self.model.state_dict(), os.path.join(path, name))
         print(f'Model saved at {name}.')
 
-    def eval(self, dataset: DataLoader) -> Tuple[float, float]:
+    def evaluate(self, dataset: DataLoader) -> Tuple[float, float]:
         dataset_len = len(dataset)
         if dataset_len == 0:
             raise ValueError('The length of dataset must be at least 1.')
 
-        loss, miou = 0, 0
+        total_loss, total_miou = 0, 0
         self.model.eval()
         with torch.no_grad():
             for inputs, masks in tqdm(dataset):
@@ -123,17 +123,17 @@ class Trainer():
                     outputs = self.model(inputs)
 
                     # Calculate loss
-                    loss += self.criterion(outputs, masks).item()
-                    miou += miou_coef(outputs, masks).item()
+                    total_loss += self.criterion(outputs, masks).item()
+                    total_miou += miou_coef(outputs, masks).item()
 
                     # Visualization
                     show_image(self.show_time, outputs, masks)
 
-        loss /= dataset_len
-        miou /= dataset_len
-        return loss, miou
+        avg_loss = total_loss / dataset_len
+        avg_miou = total_miou / dataset_len
+        return avg_loss, avg_miou
     
-    def train(self) -> None:
+    def train(self, checkpoint_path: str, model_path: str) -> None:
         if len(self.train_set) == 0:
             raise ValueError('The length of training dataset must be at least 1.')
         
@@ -183,12 +183,12 @@ class Trainer():
             print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
 
             # Evaluation
-            val_loss, val_miou = self.eval(self.val_set)
+            val_loss, val_miou = self.evaluate(self.val_set)
             self.scheduler.step(val_miou)
             print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
 
             # Test
-            test_loss, test_miou = self.eval(self.test_set)
+            test_loss, test_miou = self.evaluate(self.test_set)
             print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
 
             # Checkpoint save
@@ -199,7 +199,7 @@ class Trainer():
         self.save_model(model_path, f'{model_path}model.pth')
 
         # Total train time
-        elapsed_time = time() - start_time
+        elapsed_time = time.time() - start_time
         print(f'Training completed in: {elapsed_time:.2f} seconds')
 
         self.tensorboard.close()
