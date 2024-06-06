@@ -61,8 +61,7 @@ class Trainer():
             epochs: int,
             accumulation_step: int,
             checkpoint_step: int,
-            show_time: int,
-            show_plt: int
+            show_time: int
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -72,7 +71,6 @@ class Trainer():
         self.accumulation_step = accumulation_step
         self.checkpoint_step = checkpoint_step
         self.show_time = show_time
-        self.show_plt = show_plt
 
         # Dataset
         self.train_set = dataset['train']

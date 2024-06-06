@@ -1,78 +1,92 @@
 from torch import device, cuda
 from utils import load_config
-from unet import UNet
+from unet import EnsembleUNet, UNet
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
 from train import Trainer
 
 
-config_path = 'config/config.yaml'
-dev = device('cuda' if cuda.is_available() else 'cpu')
+CONFIG_PATH = 'config/config.yaml'
+DEVICE = device('cuda' if cuda.is_available() else 'cpu')
 
 
 if __name__ == '__main__':
-    config = load_config(config_path)
-    train_config = config['train']
-    test_config = config['test']
-    plot_config = config['plot']
+    cfg = load_config(CONFIG_PATH)
+    trainer_cfg = cfg['trainer']
+    tester_cfg = cfg['tester']
 
-    if train_config['train'] or test_config['test']:
-        model_config = config['model']
+
+    if trainer_cfg['train'] or tester_cfg['test']:
+        # Model
+        model_cfg = cfg['model']
         model = UNet(
-            channels=model_config['channels'],
-            num_classes=model_config['num_classes'],
-            backbone=model_config['backbone'],
-            pretrained=model_config['pretrained'],
-            freeze_grad=model_config['freeze_grad'],
-            kernel_size=model_config['kernel_size'],
-            bias=model_config['bias'],
-            norm=model_config['norm'],
-            dropout=model_config['dropout']
+            channels=model_cfg['channels'],
+            num_classes=model_cfg['num_classes'],
+            backbone=model_cfg['backbone'],
+            pretrained=model_cfg['pretrained'],
+            freeze_grad=model_cfg['freeze_grad'],
+            kernel_size=model_cfg['kernel_size'],
+            bias=model_cfg['bias'],
+            norm=model_cfg['norm'],
+            dropout=model_cfg['dropout'],
+            init_weights=model_cfg['init_weights']
         )
-        # print(model)
+        if model_cfg['ensemble'] > 1:
+            unet_models = []
+            for i in range(model_cfg['ensemble']):
+                unet_models.append(model)
+            model = EnsembleUNet(unet_models)
 
-        augmentation_config = config['augmentation']
+
+        # Augmentation
+        augmentation_cfg = cfg['augmentation']
         augmentation = Augmentation(
-            channels=augmentation_config['channels'],
-            resize=augmentation_config['resize'],
-            hflip=augmentation_config['hflip'],
-            vflip=augmentation_config['vflip'],
-            rotate=augmentation_config['rotate'],
-            saturation=augmentation_config['saturation'],
-            brightness=augmentation_config['brightness'],
-            factor=augmentation_config['factor'],
-            p=augmentation_config['p']
+             channels=augmentation_cfg['channels'],
+             resize=augmentation_cfg['resize'],
+             hflip=augmentation_cfg['hflip'],
+             vflip=augmentation_cfg['vflip'],
+             rotate=augmentation_cfg['rotate'],
+             saturation=augmentation_cfg['saturation'],
+             brightness=augmentation_cfg['brightness'],
+             factor=augmentation_cfg['factor'],
+             p=augmentation_cfg['p'],
+             normalize=augmentation_cfg['normalize']
         )
 
-        if train_config['train']:
-            dataloader_config = config['dataloader']
-            dataloader = SegmentationDataLoader(
-                image_path=dataloader_config['image_path'],
-                mask_path=dataloader_config['mask_path'],
-                extension=dataloader_config['extension'],
-                num_images=dataloader_config['num_images'],
-                augmentation=augmentation
-            )
 
-            dataset_config = config['dataset']
-            dataset = SegmentationDataset(
-                dataset_loader=dataloader,
-                dataset_split=dataset_config['dataset_split'],
-                batch_size=dataset_config['batch_size'],
-                shuffle=dataset_config['shuffle'],
-                num_workers=dataset_config['num_workers'],
-                pin_memory=dataset_config['pin_memory']
-            )
+        # Dataloader
+        dataloader_cfg = cfg['dataloader']
+        dataloader = SegmentationDataLoader(
+            image_path=dataloader_cfg['image_path'],
+            mask_path=dataloader_cfg['mask_path'],
+            extension=dataloader_cfg['extension'],
+            num_images=dataloader_cfg['num_images'],
+            augmentation=augmentation
+        )
 
-            train = Trainer(
-                model=model,
-                dataset=dataset.get_loader(debug=True),
-                lr=train_config['lr'],
-                device=dev,
-                epochs=train_config['epochs'],
-                accumulation_step=train_config['accumulation_step'],
-                checkpoint_step=train_config['checkpoint_step'],
-                show_time=train_config['show_time'],
-                show_plt=train_config['show_plt']
-            )
-            train.train(train_config['checkpoint_path'], train_config['model_path'])
+
+        # Dataset
+        dataset_cfg = cfg['dataset']
+        dataset = SegmentationDataset(
+            dataset_loader=dataloader,
+            dataset_split=dataset_cfg['dataset_split'],
+            batch_size=dataset_cfg['batch_size'],
+            shuffle=dataset_cfg['shuffle'],
+            num_workers=dataset_cfg['num_workers'],
+            pin_memory=dataset_cfg['pin_memory']
+        )
+
+
+        # Trainer
+        trainer_cfg = cfg['trainer']
+        trainer = Trainer(
+              model=model,
+              dataset=dataset.get_loader(debug=True),
+              lr=trainer_cfg['lr'],
+              device=DEVICE,
+              epochs=trainer_cfg['epochs'],
+              accumulation_step=trainer_cfg['accumulation_step'],
+              checkpoint_step=trainer_cfg['checkpoint_step'],
+              show_time=trainer_cfg['show_time']
+        )
+        trainer.train(trainer_cfg['checkpoint_path'], trainer_cfg['model_path'])
 
