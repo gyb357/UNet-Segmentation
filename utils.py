@@ -1,4 +1,4 @@
-from torch import Tensor, List
+from torch import Tensor
 import numpy as np
 import yaml
 import pandas as pd
@@ -20,16 +20,17 @@ def load_config(path: str) -> dict:
     return config
 
 
-def show_plot(path: str, name: str, columns: List[str]) -> None:
-    data = pd.read_csv(os.path.join(path, name))
-    x = data[columns[0]]
+def show_plot(path: str, name: str) -> None:
+    pass
+    # data = pd.read_csv(os.path.join(path, name))
+    # x = data[COLUMNS[0]]
 
-    plt.figure()
+    # plt.figure()
 
-    for col in columns[1:]:
-        plt.plot(x, data[col], label=col)
+    # for col in COLUMNS[1:]:
+    #     plt.plot(x, data[col], label=col)
 
-    plt.xlabel(columns[0])
-    plt.legend()
-    plt.show()
+    # plt.xlabel(COLUMNS[0])
+    # plt.legend()
+    # plt.show()
 

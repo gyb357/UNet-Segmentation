@@ -11,7 +11,6 @@ model:
   init_weights: true
   ensemble: 1
 
-
 augmentation:
   channels: 3
   resize: [320, 320]
@@ -24,13 +23,11 @@ augmentation:
   p: 0.5
   normalize: false
 
-
 dataloader:
   image_path: 'dataset/image'
   mask_path: 'dataset/mask'
   extension: '.jpg'
-  num_images: 0
-
+  num_images: 10
 
 dataset:
   dataset_split: {'train': 0.85, 'val': 0.1}
@@ -39,7 +36,6 @@ dataset:
   num_workers: 8
   pin_memory: true
 
-
 trainer:
   train: true
   lr: 0.0001
@@ -47,10 +43,15 @@ trainer:
   accumulation_step: 4
   checkpoint_step: 20
   show_time: 0.5
+  csv_path: 'csv/'
+  csv_name: 'train_logg.csv'
   checkpoint_path: 'model/checkpoint'
   model_path: 'model'
 
-
 tester:
   test: true
+  threshold: 0.8
+
+plot:
+  plot: true
 

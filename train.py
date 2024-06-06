@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import Tuple, Dict
 import csv
 import os
 from torch import Tensor
@@ -25,15 +25,6 @@ COLUMNS = [
     'Val_loss',
     'Val_miou'
 ]
-
-
-def get_csv_writer(path: str, name: str, columns: List[str]) -> Tuple[csv.DictWriter, any]:
-    os.makedirs(path, exist_ok=True)
-
-    file = open(os.path.join(path, name), mode='w', newline='')
-    writer = csv.DictWriter(file, fieldnames=columns)
-    writer.writeheader()
-    return writer, file
 
 
 def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
@@ -118,74 +109,90 @@ class Trainer():
         avg_miou = total_miou / dataset_len
         return avg_loss, avg_miou
     
-    def train(self, checkpoint_path: str, model_path: str) -> None:
+    def train(self, csv_path: str, csv_name: str, checkpoint_path: str, model_path: str) -> None:
         if len(self.train_set) == 0:
             raise ValueError('The length of training dataset must be at least 1.')
         
-        start_time = time.time()
+        # Define logg recoder
+        os.makedirs(csv_path, exist_ok=True)
+        with open(f'{csv_path}{csv_name}', 'w', newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, COLUMNS)
+            writer.writeheader()
 
-        for epoch in range(1, self.epochs + 1):
-            self.model.train()
-            train_loss, train_loss_mini, train_loss_micro, train_miou = 0, 0, 0, 0
+            # Train start time
+            start_time = time.time()
 
-            for i, (inputs, masks) in enumerate(tqdm(self.train_set), start=1):
-                inputs, masks = inputs.to(self.device), masks.to(self.device)
+            # Train
+            for epoch in range(1, self.epochs + 1):
+                self.model.train()
+                train_loss, train_loss_mini, train_loss_micro, train_miou = 0, 0, 0, 0
 
-                # Mixed precision learning: FP32 -> FP16
-                with autocast():
-                    # Forward propagation
-                    outputs = self.model(inputs)
+                for i, (inputs, masks) in enumerate(tqdm(self.train_set), start=1):
+                    inputs, masks = inputs.to(self.device), masks.to(self.device)
+    
+                    # Mixed precision learning: FP32 -> FP16
+                    with autocast():
+                        # Forward propagation
+                        outputs = self.model(inputs)
+    
+                        # Calculate loss
+                        loss = self.criterion(outputs, masks)
+                        loss_item = loss.item()
+                        train_loss += loss_item
+                        train_loss_mini += loss_item
+                        train_loss_micro = loss_item
+                        train_miou += miou_coef(outputs, masks).item()
+    
+                    # Back propagation
+                    self.scaler.scale(loss).backward()
+    
+                    # Gradient accumulation
+                    if i % self.accumulation_step == 0:
+                        # Unscale: FP16 -> FP32
+                        self.scaler.unscale_(self.optim)
+    
+                        # Prevent gradient exploding
+                        nn.utils.clip_grad_norm_(self.model.parameters(), 1)
+    
+                        # Gradient update
+                        self.scaler.step(self.optim)
+                        self.scaler.update()
+    
+                        # Initialize gradient to zero
+                        self.optim.zero_grad()
+                        train_loss_mini /= self.accumulation_step
+    
+                train_loss /= len(self.train_set)
+                train_miou /= len(self.train_set)
+                print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
+    
+                # Evaluation
+                val_loss, val_miou = self.evaluate(self.val_set)
+                self.scheduler.step(val_miou)
+                print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
 
-                    # Calculate loss
-                    loss = self.criterion(outputs, masks)
-                    loss_item = loss.item()
-                    train_loss += loss_item
-                    train_loss_mini += loss_item
-                    train_loss_micro = loss_item
-                    train_miou += miou_coef(outputs, masks).item()
+                # Train logg recode
+                values = [epoch, train_loss, train_loss_mini, train_loss_micro, train_miou, val_loss, val_miou]
+                data = {COLUMNS[i]: values[i] for i in range(len(COLUMNS))}
+                writer.writerow(data)
 
-                # Back propagation
-                self.scaler.scale(loss).backward()
+                for i in range(1, len(COLUMNS)):
+                    self.tensorboard.add_scalar(COLUMNS[i], values[i], epoch)
 
-                # Gradient accumulation
-                if i % self.accumulation_step == 0:
-                    # Unscale: FP16 -> FP32
-                    self.scaler.unscale_(self.optim)
+                # Test
+                test_loss, test_miou = self.evaluate(self.test_set)
+                print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
 
-                    # Prevent gradient exploding
-                    nn.utils.clip_grad_norm_(self.model.parameters(), 1)
-
-                    # Gradient update
-                    self.scaler.step(self.optim)
-                    self.scaler.update()
-
-                    # Initialize gradient to zero
-                    self.optim.zero_grad()
-                    train_loss_mini /= self.accumulation_step
-
-            train_loss /= len(self.train_set)
-            train_miou /= len(self.train_set)
-            print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
-
-            # Evaluation
-            val_loss, val_miou = self.evaluate(self.val_set)
-            self.scheduler.step(val_miou)
-            print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
-
-            # Test
-            test_loss, test_miou = self.evaluate(self.test_set)
-            print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
-
-            # Checkpoint save
-            if epoch % self.checkpoint_step == 0:
-                self.save_model(checkpoint_path, f'epoch_{epoch}.pth')
-
-        # Model save
-        self.save_model(model_path, f'{model_path}model.pth')
-
-        # Total train time
-        elapsed_time = time.time() - start_time
-        print(f'Training completed in: {elapsed_time:.2f} seconds')
-
-        self.tensorboard.close()
+                # Checkpoint save
+                if epoch % self.checkpoint_step == 0:
+                    self.save_model(checkpoint_path, f'epoch_{epoch}.pth')
+                    
+            # Model save
+            self.save_model(model_path, f'{model_path}model.pth')
+    
+            # Total train time
+            elapsed_time = time.time() - start_time
+            print(f'Training completed in: {elapsed_time:.2f} seconds')
+    
+            self.tensorboard.close()
 

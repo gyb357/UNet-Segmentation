@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict
 import os
 import numpy as np
 from PIL import Image, ImageDraw
@@ -56,7 +56,7 @@ class Augmentation():
     def __init__(
             self,
             channels: int,
-            resize: Tuple[int, int] = None,
+            resize: Optional[Tuple[int, int]] = None,
             hflip: bool = False,
             vflip: bool = False,
             rotate: float = 0,
@@ -114,7 +114,7 @@ class SegmentationDataLoader(Dataset):
             mask_path: str,
             extension: str,
             num_images: int = 0,
-            augmentation: Augmentation = None
+            augmentation: Optional[Augmentation] = None
     ) -> None:
         self.image_path = image_path
         self.mask_path = mask_path
