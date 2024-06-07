@@ -105,8 +105,8 @@ class Trainer():
                     # Visualization
                     show_image(self.show_time, outputs, masks)
 
-        avg_loss = total_loss / dataset_len
-        avg_miou = total_miou / dataset_len
+        avg_loss = total_loss/dataset_len
+        avg_miou = total_miou/dataset_len
         return avg_loss, avg_miou
     
     def train(self, csv_path: str, csv_name: str, checkpoint_path: str, model_path: str) -> None:

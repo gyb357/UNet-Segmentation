@@ -63,8 +63,7 @@ class Augmentation():
             saturation: float = 0,
             brightness: float = 0,
             factor: float = 1,
-            p: float = 0.5,
-            normalize: bool = False
+            p: float = 0.5
     ) -> None:
         self.channels = channels
         self.resize = resize
@@ -75,14 +74,12 @@ class Augmentation():
         self.brightness = brightness
         self.factor = factor
         self.p = p
-        self.normalize = normalize
 
     def __call__(self, image: Image, mask: Image) -> Tuple[Image.Image, Image.Image]:
         if self.channels == 1:
             image = F.to_grayscale(image, 1)
 
-        mask = F.to_tensor(mask)/255.0
-        mask = F.to_pil_image(mask)
+        mask = mask.convert('1')
 
         if self.resize is not None:
             image, mask = F.resize(image, self.resize), F.resize(mask, self.resize)
@@ -98,12 +95,6 @@ class Augmentation():
             image = F.adjust_saturation(image, R.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
         if self.brightness > 0:
             image = F.adjust_brightness(image, R.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
-
-        if self.normalize:
-            image = F.to_tensor(image)
-            mask = F.to_tensor(mask)
-            image = F.normalize(image, self.norm_mean, self.norm_std)
-            mask = F.normalize(mask, self.norm_mean, self.norm_std)
         return image, mask
 
 

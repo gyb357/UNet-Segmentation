@@ -42,7 +42,7 @@ class Tester():
         input = Image.open(image_path)
 
         if self.augmentation.channels == 1:
-            input.convert('L')
+            input = input.convert('L')
 
         input = F.resize(input, self.augmentation.resize)
         input = F.to_tensor(input)
@@ -51,7 +51,7 @@ class Tester():
         input = input.to(self.device)
         input = input.unsqueeze(0)
 
-        self.model.load_state_dict(model_path)
+        self.model.load_state_dict(torch.load(model_path))
         with torch.no_grad():
             output = self.model(input)
 

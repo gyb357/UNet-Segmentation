@@ -21,7 +21,6 @@ augmentation:
   brightness: 0.5
   factor: 1
   p: 0.5
-  normalize: false
 
 dataloader:
   image_path: 'dataset/image'

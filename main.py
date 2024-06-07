@@ -48,8 +48,7 @@ if __name__ == '__main__':
              saturation=augmentation_cfg['saturation'],
              brightness=augmentation_cfg['brightness'],
              factor=augmentation_cfg['factor'],
-             p=augmentation_cfg['p'],
-             normalize=augmentation_cfg['normalize']
+             p=augmentation_cfg['p']
         )
 
         # Dataloader
@@ -75,22 +74,22 @@ if __name__ == '__main__':
 
         # Trainer
         trainer_cfg = cfg['trainer']
-        # trainer = Trainer(
-        #       model=model,
-        #       dataset=dataset.get_loader(debug=True),
-        #       lr=trainer_cfg['lr'],
-        #       device=DEVICE,
-        #       epochs=trainer_cfg['epochs'],
-        #       accumulation_step=trainer_cfg['accumulation_step'],
-        #       checkpoint_step=trainer_cfg['checkpoint_step'],
-        #       show_time=trainer_cfg['show_time']
-        # )
-        # trainer.train(
-        #     trainer_cfg['csv_path'],
-        #     trainer_cfg['csv_name'],
-        #     trainer_cfg['checkpoint_path'],
-        #     trainer_cfg['model_path']
-        # )
+        trainer = Trainer(
+              model=model,
+              dataset=dataset.get_loader(debug=True),
+              lr=trainer_cfg['lr'],
+              device=DEVICE,
+              epochs=trainer_cfg['epochs'],
+              accumulation_step=trainer_cfg['accumulation_step'],
+              checkpoint_step=trainer_cfg['checkpoint_step'],
+              show_time=trainer_cfg['show_time']
+        )
+        trainer.train(
+            trainer_cfg['csv_path'],
+            trainer_cfg['csv_name'],
+            trainer_cfg['checkpoint_path'],
+            trainer_cfg['model_path']
+        )
 
         # Tester
         tester = Tester(

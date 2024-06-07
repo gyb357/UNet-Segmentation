@@ -1,9 +1,6 @@
 from torch import Tensor
 import numpy as np
 import yaml
-import pandas as pd
-import os
-import matplotlib.pyplot as plt
 
 
 def operate(a: bool, b, c) -> any:
