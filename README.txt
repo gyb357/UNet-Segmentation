@@ -1,12 +1,12 @@
-# UNet with ResNet Backbone
+#UNet with ResNet Backbone
 This repository contains an implementation of a UNet model with a ResNet backbone using PyTorch. The model leverages pretrained weights from ResNet to enhance feature extraction in the encoder part of the UNet architecture. Additionally, an ensemble model is provided to combine multiple UNet models for improved performance.
 
 
-## Introduction
+##Introduction
 UNet is a popular convolutional neural network architecture for biomedical image segmentation. It consists of a contracting path to capture context and a symmetric expanding path that enables precise localization. By incorporating a ResNet backbone, this implementation enhances the feature extraction capabilities of the encoder, potentially improving segmentation performance. Additionally, an ensemble model is provided to combine multiple UNet models for improved performance.
 
 
-## Installation
+##Installation
 To get started, clone the repository and install the required dependencies:
 
 ```bash
