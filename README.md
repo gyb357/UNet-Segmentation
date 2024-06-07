@@ -45,8 +45,7 @@ The repository is structured as follows:
 ├── test.py               # Script for testing/evaluation
 ├── train.py              # Script for training the model
 ├── unet.py               # UNet model definition
-├── utils.py              # Utility functions
-└── ensemble.py           # Ensemble model definition
+└── utils.py              # Utility functions
 ```
 
 
