@@ -1,101 +1,101 @@
-from utils import load_config
 from torch import device, cuda
-from dataset import Augmentation, SegmentationDataset, Dataset
-from model import UNet
-from train import Train, Plot
-from test import Test
+from utils import load_config
+from unet import EnsembleUNet, UNet
+from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
+from train import Trainer
+from test import Tester
 
 
-config = load_config('config/config.json')
-
-
-dev = device('cuda' if cuda.is_available() else 'cpu')
+CONFIG_PATH = 'config/config.yaml'
+DEVICE = device('cuda' if cuda.is_available() else 'cpu')
 
 
 if __name__ == '__main__':
-    config_train = config['train']
-    config_test = config['test']
-    config_plot = config['plot']
+    cfg = load_config(CONFIG_PATH)
+    trainer_cfg = cfg['trainer']
+    tester_cfg = cfg['tester']
 
-    if config_train['train'] == True or config_test['test'] == True:
-        config_model = config['model']
+    if trainer_cfg['train'] or tester_cfg['test']:
+        # Model
+        model_cfg = cfg['model']
         model = UNet(
-            in_channels  = config_model['in_channels'],
-            out_channels = config_model['out_channels'],
-            filter       = config_model['filter'],
-            kernel_size  = config_model['kernel_size'],
-            bias         = config_model['bias'],
-            dropout      = config_model['dropout'],
-            batch_normal = config_model['batch_normal'],
-            init_weights = config_model['init_weights']
-        ).to(dev)
-        # print(model)
-
-        config_aug = config['augmentation']
-        augmentation = Augmentation(
-            channels = config_aug['channels'],
-            crop     = config_aug['crop'],
-            resize   = config_aug['resize'],
-            hflip    = config_aug['flip'],
-            vflip    = config_aug['flip']
+            channels=model_cfg['channels'],
+            num_classes=model_cfg['num_classes'],
+            backbone=model_cfg['backbone'],
+            pretrained=model_cfg['pretrained'],
+            freeze_grad=model_cfg['freeze_grad'],
+            kernel_size=model_cfg['kernel_size'],
+            bias=model_cfg['bias'],
+            norm=model_cfg['norm'],
+            dropout=model_cfg['dropout'],
+            init_weights=model_cfg['init_weights']
         )
-
-    if config_train['train'] == True:
-        config_seg = config['segmentation_dataset']
-        ubiris_dataset = SegmentationDataset(
-            image_path   = config_seg['ubiris_image_path'],
-            mask_path    = config_seg['ubiris_mask_path'],
-            extension    = config_seg['ubiris_extension'],
-            num_images   = config_seg['ubiris_num_images'],
-            augmentation = augmentation
-        )
-        ubipr_dataset = SegmentationDataset(
-            image_path   = config_seg['ubipr_image_path'],
-            mask_path    = config_seg['ubipr_mask_path'],
-            extension    = config_seg['ubipr_extension'],
-            num_images   = config_seg['ubipr_num_images'],
-            augmentation = augmentation
-        )
-    
-        config_data = config['dataset']
-        dataset = Dataset(
-            dataset       = ubiris_dataset + ubipr_dataset,
-            dataset_split = config_data['dataset_split'],
-            batch_size    = config_data['batch_size'],
-            shuffle       = config_data['shuffle'],
-            num_workers   = config_data['num_workers'],
-            pin_memory    = config_data['pin_memory']
-        )
+        if model_cfg['ensemble'] > 1:
+            unet_models = []
+            for i in range(model_cfg['ensemble']):
+                unet_models.append(model)
+            model = EnsembleUNet(unet_models)
+        model.to(DEVICE)
         
-        train = Train(
-            model             = model,
-            dataset           = dataset.get_dataloader(),
-            lr                = config_train['lr'],
-            epochs            = config_train['epochs'],
-            accumulation_step = config_train['accumulation_step'],
-            checkpoint_step   = config_train['checkpoint_step'],
-            device            = dev,
-            show              = config_train['show'],
-            csv_path          = config_train['csv_path'],
-            checkpoint_path   = config_train['checkpoint_path'],
-            model_path        = config_train['model_path']
+        # Augmentation
+        augmentation_cfg = cfg['augmentation']
+        augmentation = Augmentation(
+             channels=augmentation_cfg['channels'],
+             resize=augmentation_cfg['resize'],
+             hflip=augmentation_cfg['hflip'],
+             vflip=augmentation_cfg['vflip'],
+             rotate=augmentation_cfg['rotate'],
+             saturation=augmentation_cfg['saturation'],
+             brightness=augmentation_cfg['brightness'],
+             factor=augmentation_cfg['factor'],
+             p=augmentation_cfg['p']
         )
-        train.train()
 
-    if config_plot['show'] == True:
-        Plot(
-            csv_path = config_plot['csv_path']
-        ).show_plot()
-        # tensorboard --logdir=
-
-    if config_test['test'] == True:
-        test = Test(
-            model        = model,
-            device       = dev,
-            augmentation = augmentation,
-            threshold    = config_test['threshold'],
-            model_path   = config_test['model_path'],
-            image_path   = config_test['image_path']
+        # Dataloader
+        dataloader_cfg = cfg['dataloader']
+        dataloader = SegmentationDataLoader(
+            image_path=dataloader_cfg['image_path'],
+            mask_path=dataloader_cfg['mask_path'],
+            extension=dataloader_cfg['extension'],
+            num_images=dataloader_cfg['num_images'],
+            augmentation=augmentation
         )
-        test.test()
+
+        # Dataset
+        dataset_cfg = cfg['dataset']
+        dataset = SegmentationDataset(
+            dataset_loader=dataloader,
+            dataset_split=dataset_cfg['dataset_split'],
+            batch_size=dataset_cfg['batch_size'],
+            shuffle=dataset_cfg['shuffle'],
+            num_workers=dataset_cfg['num_workers'],
+            pin_memory=dataset_cfg['pin_memory']
+        )
+
+        # Trainer
+        trainer_cfg = cfg['trainer']
+        trainer = Trainer(
+              model=model,
+              dataset=dataset.get_loader(debug=True),
+              lr=trainer_cfg['lr'],
+              device=DEVICE,
+              epochs=trainer_cfg['epochs'],
+              accumulation_step=trainer_cfg['accumulation_step'],
+              checkpoint_step=trainer_cfg['checkpoint_step'],
+              show_time=trainer_cfg['show_time']
+        )
+        trainer.train(
+            trainer_cfg['csv_path'],
+            trainer_cfg['csv_name'],
+            trainer_cfg['checkpoint_path'],
+            trainer_cfg['model_path']
+        )
+
+        # Tester
+        tester = Tester(
+            model=model,
+            device=DEVICE,
+            augmentation=augmentation,
+            threshold=tester_cfg['threshold']
+        )
 

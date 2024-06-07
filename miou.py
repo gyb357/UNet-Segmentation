@@ -18,6 +18,7 @@ def miou_coef(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
     iou = (inter + epsilon)/(union + epsilon)
     return iou.mean()
 
+
 def miou_loss(inputs: Tensor, masks: Tensor, epsilon: float = 1e-6) -> Tensor:
     return 1 - miou_coef(inputs, masks, epsilon)
 
