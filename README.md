@@ -50,3 +50,6 @@ Download link
     resnet101 v2: https://download.pytorch.org/models/resnet101-cd907fc2.pth
     resnet152 v2: https://download.pytorch.org/models/resnet152-f82ba261.pth
 
+
+Pretraining weight models above resnet50 are currently under development and will be developed later.
+
