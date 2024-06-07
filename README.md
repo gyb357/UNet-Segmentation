@@ -38,6 +38,13 @@ The repository is structured as follows:
 ```
 
 
+## How to use it
+
+1. Check the config.yaml and adjust the parameters and file addresses of the model.
+2. Place a dataset or prelearning weight in the specified file.
+3. Run main.py to learn and test the model.
+
+
 ## Pretrained Weights
 Download the Imagenet1K pretrained model and put it in the model/pretrained/.
 
