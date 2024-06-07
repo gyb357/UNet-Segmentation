@@ -30,7 +30,7 @@ dataloader:
 
 dataset:
   dataset_split: {'train': 0.85, 'val': 0.1}
-  batch_size: 4
+  batch_size: 8
   shuffle: true
   num_workers: 8
   pin_memory: true
