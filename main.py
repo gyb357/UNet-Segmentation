@@ -1,5 +1,5 @@
 from torch import device, cuda
-from utils import load_config, show_plot
+from utils import load_config
 from unet import EnsembleUNet, UNet
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
 from train import Trainer
@@ -14,7 +14,6 @@ if __name__ == '__main__':
     cfg = load_config(CONFIG_PATH)
     trainer_cfg = cfg['trainer']
     tester_cfg = cfg['tester']
-    plot_cfg = cfg['plot']
 
     if trainer_cfg['train'] or tester_cfg['test']:
         # Model
@@ -36,7 +35,8 @@ if __name__ == '__main__':
             for i in range(model_cfg['ensemble']):
                 unet_models.append(model)
             model = EnsembleUNet(unet_models)
-
+        model.to(DEVICE)
+        
         # Augmentation
         augmentation_cfg = cfg['augmentation']
         augmentation = Augmentation(
@@ -75,22 +75,22 @@ if __name__ == '__main__':
 
         # Trainer
         trainer_cfg = cfg['trainer']
-        trainer = Trainer(
-              model=model,
-              dataset=dataset.get_loader(debug=True),
-              lr=trainer_cfg['lr'],
-              device=DEVICE,
-              epochs=trainer_cfg['epochs'],
-              accumulation_step=trainer_cfg['accumulation_step'],
-              checkpoint_step=trainer_cfg['checkpoint_step'],
-              show_time=trainer_cfg['show_time']
-        )
-        trainer.train(
-            trainer_cfg['csv_path'],
-            trainer_cfg['csv_name'],
-            trainer_cfg['checkpoint_path'],
-            trainer_cfg['model_path']
-        )
+        # trainer = Trainer(
+        #       model=model,
+        #       dataset=dataset.get_loader(debug=True),
+        #       lr=trainer_cfg['lr'],
+        #       device=DEVICE,
+        #       epochs=trainer_cfg['epochs'],
+        #       accumulation_step=trainer_cfg['accumulation_step'],
+        #       checkpoint_step=trainer_cfg['checkpoint_step'],
+        #       show_time=trainer_cfg['show_time']
+        # )
+        # trainer.train(
+        #     trainer_cfg['csv_path'],
+        #     trainer_cfg['csv_name'],
+        #     trainer_cfg['checkpoint_path'],
+        #     trainer_cfg['model_path']
+        # )
 
         # Tester
         tester = Tester(
@@ -99,7 +99,4 @@ if __name__ == '__main__':
             augmentation=augmentation,
             threshold=tester_cfg['threshold']
         )
-
-    if plot_cfg['plot']:
-        show_plot(trainer_cfg['csv_path'], trainer_cfg['csv_name'])
 

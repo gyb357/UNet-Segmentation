@@ -19,18 +19,3 @@ def load_config(path: str) -> dict:
         config = yaml.safe_load(file)
     return config
 
-
-def show_plot(path: str, name: str) -> None:
-    pass
-    # data = pd.read_csv(os.path.join(path, name))
-    # x = data[COLUMNS[0]]
-
-    # plt.figure()
-
-    # for col in COLUMNS[1:]:
-    #     plt.plot(x, data[col], label=col)
-
-    # plt.xlabel(COLUMNS[0])
-    # plt.legend()
-    # plt.show()
-

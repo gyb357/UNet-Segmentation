@@ -123,9 +123,9 @@ class EncoderBlocks(nn.Module):
                 in_channels = out_channels
         else:
             self.encoder, self.filters = resnet(backbone, channels, pretrained=pretrained)
-            if freeze_grad:
-                for param in self.encoder.parameters():
-                    param.requires_grad = False
+
+            for param in self.encoder.parameters():
+                param.requires_grad = not freeze_grad
 
             self.inputs = nn.Sequential(
                 self.encoder.conv1,
@@ -241,9 +241,10 @@ class UNet(nn.Module):
 class EnsembleUNet(nn.Module):
     def __init__(self, unet_models: List[UNet]) -> None:
         super(EnsembleUNet, self).__init__()
-        self.unet_models = unet_models
+        self.unet_models = nn.ModuleList(unet_models)
 
     def forward(self, x: Tensor) -> Tensor:
-        out = [unet(x) for unet in self.unet_models]
-        return torch.mean(torch.stack(out), dim=0)
+        out = [model(x) for model in self.unet_models]
+        out = torch.mean(torch.stack(out), dim=0)
+        return out
 
