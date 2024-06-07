@@ -50,5 +50,6 @@ trainer:
 tester:
   test: true
   threshold: 0.8
+  image_path: 'dataset/test/test.jpg'
 
   
