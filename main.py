@@ -98,4 +98,5 @@ if __name__ == '__main__':
             augmentation=augmentation,
             threshold=tester_cfg['threshold']
         )
+        tester.test(trainer_cfg['model_path'], tester_cfg['image_path'])
 
