@@ -1,7 +1,7 @@
 model:
   channels: 3
   num_classes: 1
-  backbone: 'resnet18'
+  backbone: null
   pretrained: true
   freeze_grad: false
   kernel_size: 3
@@ -9,7 +9,7 @@ model:
   norm: null
   dropout: 0.0
   init_weights: true
-  ensemble: 4
+  ensemble: 0
 
 augmentation:
   channels: 3
