@@ -4,9 +4,11 @@ This repository contains an implementation of a UNet model with a ResNet backbon
 
 
 
+
 ## Introduction
 
 UNet is a popular convolutional neural network architecture for biomedical image segmentation. It consists of a contracting path to capture context and a symmetric expanding path that enables precise localization. By incorporating a ResNet backbone, this implementation enhances the feature extraction capabilities of the encoder, potentially improving segmentation performance. Additionally, an ensemble model is provided to combine multiple UNet models for improved performance.
+
 
 
 
@@ -21,6 +23,7 @@ pip install -r requirements.txt
 
 
 
+
 ## File Structure
 The repository is structured as follows:
 ```
@@ -32,6 +35,7 @@ The repository is structured as follows:
 ├── dataset/
 │   ├── image/            # Directory for train image dataset
 │   └── mask/             # Directory for train mask dataset
+│   └── test/             # Directory for test image dataset
 ├── model/
 │   ├── checkpoint/       # Directory for checkpoint models
 │   └── pretrained/       # Directory for storing pretrained models
@@ -50,11 +54,14 @@ The repository is structured as follows:
 
 
 
+
 ## How to use it
 
 1. Check the config.yaml and adjust the parameters and file addresses of the model.
 2. Place a dataset or prelearning weight in the specified file.
 3. Run main.py to learn and test the model.
+4. In cmd, enter the "tensorboard --logdir= your tensorboard log dir" and access the web browser at "localhost:6006" to check the tensorboard.
+
 
 
 
@@ -68,6 +75,7 @@ Download link
     resnet50 v2: https://download.pytorch.org/models/resnet50-11ad3fa6.pth
     resnet101 v2: https://download.pytorch.org/models/resnet101-cd907fc2.pth
     resnet152 v2: https://download.pytorch.org/models/resnet152-f82ba261.pth
+
 
 
 

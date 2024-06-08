@@ -14,7 +14,7 @@ if __name__ == '__main__':
     cfg = load_config(CONFIG_PATH)
     trainer_cfg = cfg['trainer']
     tester_cfg = cfg['tester']
-
+    
     if trainer_cfg['train'] or tester_cfg['test']:
         # Model
         model_cfg = cfg['model']
@@ -36,7 +36,7 @@ if __name__ == '__main__':
                 unet_models.append(model)
             model = EnsembleUNet(unet_models)
         model.to(DEVICE)
-        
+
         # Augmentation
         augmentation_cfg = cfg['augmentation']
         augmentation = Augmentation(
@@ -73,30 +73,34 @@ if __name__ == '__main__':
         )
 
         # Trainer
-        trainer_cfg = cfg['trainer']
-        trainer = Trainer(
-              model=model,
-              dataset=dataset.get_loader(debug=True),
-              lr=trainer_cfg['lr'],
-              device=DEVICE,
-              epochs=trainer_cfg['epochs'],
-              accumulation_step=trainer_cfg['accumulation_step'],
-              checkpoint_step=trainer_cfg['checkpoint_step'],
-              show_time=trainer_cfg['show_time']
-        )
-        trainer.train(
-            trainer_cfg['csv_path'],
-            trainer_cfg['csv_name'],
-            trainer_cfg['checkpoint_path'],
-            trainer_cfg['model_path']
-        )
+        if trainer_cfg['train']:
+            trainer = Trainer(
+                  model=model,
+                  dataset=dataset.get_loader(debug=True),
+                  lr=trainer_cfg['lr'],
+                  device=DEVICE,
+                  epochs=trainer_cfg['epochs'],
+                  accumulation_step=trainer_cfg['accumulation_step'],
+                  checkpoint_step=trainer_cfg['checkpoint_step'],
+                  show_time=trainer_cfg['show_time']
+            )
+            trainer.train(
+                csv_path=trainer_cfg['csv_path'],
+                csv_name=trainer_cfg['csv_name'],
+                checkpoint_path=trainer_cfg['checkpoint_path'],
+                model_path=trainer_cfg['model_path']
+            )
 
         # Tester
-        tester = Tester(
-            model=model,
-            device=DEVICE,
-            augmentation=augmentation,
-            threshold=tester_cfg['threshold']
-        )
-        tester.test(trainer_cfg['model_path'], tester_cfg['image_path'])
+        if tester_cfg['test']:
+            tester = Tester(
+                model=model,
+                device=DEVICE,
+                augmentation=augmentation,
+                threshold=tester_cfg['threshold']
+            )
+            tester.test(
+                model_path=tester_cfg['model_path'],
+                image_path=tester_cfg['image_path']
+            )
 
