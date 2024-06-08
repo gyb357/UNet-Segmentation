@@ -188,7 +188,7 @@ class Trainer():
                     self.save_model(checkpoint_path, f'epoch_{epoch}.pth')
                     
             # Model save
-            self.save_model(model_path, f'{model_path}model.pth')
+            self.save_model(model_path, 'model.pth')
     
             # Total train time
             elapsed_time = time.time() - start_time
