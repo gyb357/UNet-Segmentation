@@ -34,7 +34,7 @@ The repository is structured as follows:
 │   └── train_logg.csv    # Train logg csv files
 ├── dataset/
 │   ├── image/            # Directory for train image dataset
-│   └── mask/             # Directory for train mask dataset
+│   ├── mask/             # Directory for train mask dataset
 │   └── test/             # Directory for test image dataset
 ├── model/
 │   ├── checkpoint/       # Directory for checkpoint models
