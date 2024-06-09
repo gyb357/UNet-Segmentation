@@ -1,4 +1,5 @@
 from torch import device, cuda
+import torch.nn as nn
 from utils import load_config
 from unet import EnsembleUNet, UNet
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
@@ -8,6 +9,7 @@ from test import Tester
 
 CONFIG_PATH = 'config/config.yaml'
 DEVICE = device('cuda' if cuda.is_available() else 'cpu')
+LOSS = nn.BCEWithLogitsLoss().to(DEVICE)
 
 
 if __name__ == '__main__':
@@ -78,6 +80,7 @@ if __name__ == '__main__':
                   model=model,
                   dataset=dataset.get_loader(debug=True),
                   lr=trainer_cfg['lr'],
+                  loss=LOSS,
                   device=DEVICE,
                   epochs=trainer_cfg['epochs'],
                   accumulation_step=trainer_cfg['accumulation_step'],
