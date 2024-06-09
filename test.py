@@ -56,7 +56,7 @@ class Tester():
             output = self.model(input)
 
         input = tensor_to_numpy(input)
-        output = tensor_to_numpy(torch.sigmoid(output))
+        output = tensor_to_numpy(torch.sigmoid(output)) # output = tensor_to_numpy(torch.softmax(output))
         result = (output > self.threshold)*input
         show_image(input_copy, output, result)
 

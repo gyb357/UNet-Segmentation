@@ -29,7 +29,7 @@ COLUMNS = [
 
 def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
     if show_time > 0:
-        output = torch.sigmoid(output)
+        output = torch.sigmoid(output) # output = torch.softmax(output)
 
         plt.subplot(1, 2, 1)
         plt.title('Predicted mask')
@@ -50,6 +50,7 @@ class Trainer():
             model: nn.Module,
             dataset: Dict[str, DataLoader],
             lr: float,
+            loss: nn.Module,
             device: device,
             epochs: int,
             accumulation_step: int,
@@ -72,7 +73,7 @@ class Trainer():
 
         # Train modules
         self.optim = optim.Adam(model.parameters(), lr)
-        self.criterion = nn.BCEWithLogitsLoss().to(device)
+        self.criterion = loss
         self.scaler = GradScaler()
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, 'max', patience=5)
 
