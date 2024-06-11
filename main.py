@@ -1,7 +1,8 @@
 from torch import device, cuda
 import torch.nn as nn
 from utils import load_config
-from unet import EnsembleUNet, UNet
+from unet import UNet, EnsembleUNet
+# from torchsummary import summary
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
 from train import Trainer
 from test import Tester
@@ -32,10 +33,24 @@ if __name__ == '__main__':
             dropout=model_cfg['dropout'],
             init_weights=model_cfg['init_weights']
         )
-        if model_cfg['ensemble'] > 1:
+        if model_cfg['ensemble'] is not None:
             unet_models = []
-            for i in range(model_cfg['ensemble']):
-                unet_models.append(model)
+
+            for ensemble_cfg in model_cfg['ensemble']:
+               print(ensemble_cfg)
+               unet = UNet(
+                    channels=ensemble_cfg['channels'],
+                    num_classes=ensemble_cfg['num_classes'],
+                    backbone=ensemble_cfg['backbone'],
+                    pretrained=ensemble_cfg['pretrained'],
+                    freeze_grad=ensemble_cfg['freeze_grad'],
+                    kernel_size=ensemble_cfg['kernel_size'],
+                    bias=ensemble_cfg['bias'],
+                    norm=ensemble_cfg['norm'],
+                    dropout=ensemble_cfg['dropout'],
+                    init_weights=ensemble_cfg['init_weights']
+               )
+               unet_models.append(unet)
             model = EnsembleUNet(unet_models)
         model.to(DEVICE)
 
@@ -73,6 +88,12 @@ if __name__ == '__main__':
             num_workers=dataset_cfg['num_workers'],
             pin_memory=dataset_cfg['pin_memory']
         )
+
+        # summary(
+        #     model,
+        #     input_size=(augmentation_cfg['channels'], augmentation_cfg['resize'][0], augmentation_cfg['resize'][1]),
+        #     batch_size=dataset_cfg['batch_size']
+        # )
 
         # Trainer
         if trainer_cfg['train']:

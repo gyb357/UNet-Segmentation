@@ -2,14 +2,36 @@ model:
   channels: 3
   num_classes: 1
   backbone: null
-  pretrained: true
+  pretrained: false
   freeze_grad: false
   kernel_size: 3
   bias: false
   norm: null
   dropout: 0.0
   init_weights: true
-  ensemble: 0
+  ensemble:
+    null
+    # - channels: 3
+    #   num_classes: 1
+    #   backbone: 'resnet18'
+    #   pretrained: false
+    #   freeze_grad: true
+    #   kernel_size: 3
+    #   bias: false
+    #   norm: null
+    #   dropout: 0.2
+    #   init_weights: true
+
+    # - channels: 3
+    #   num_classes: 1
+    #   backbone: 'resnet34'
+    #   pretrained: false
+    #   freeze_grad: true
+    #   kernel_size: 3
+    #   bias: false
+    #   norm: null
+    #   dropout: 0.2
+    #   init_weights: true
 
 augmentation:
   channels: 3
