@@ -50,9 +50,6 @@ class MaskDatasetGenerator():
 
 
 class Augmentation():
-    norm_mean: List[float] = [0.485, 0.456, 0.406]
-    norm_std: List[float] = [0.229, 0.224, 0.225]
-
     def __init__(
             self,
             channels: int,
