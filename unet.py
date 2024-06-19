@@ -179,11 +179,13 @@ class DecoderBlocks(nn.Module):
 
     def forward(self, x_out: List[Tensor], c: Tensor) -> Tensor:
         d = self.pool(c)
+        print(d.shape)
 
         for i, decoder in enumerate(self.decoder):
             x = x_out[-1 - i]
             if self.backbone is None:
                 x = self.pool(x)
+                print(x.shape)
 
             d = decoder(d, x)
         return d
@@ -248,3 +250,9 @@ class EnsembleUNet(nn.Module):
         out = torch.mean(torch.stack(out), dim=0)
         return out
 
+
+model = UNet(3, 1, 'resnet50', True)
+print(model)
+inp = torch.rand((1, 3, 320, 320))
+out = model(inp)
+print(out.shape)

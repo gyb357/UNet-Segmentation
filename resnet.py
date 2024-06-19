@@ -203,9 +203,9 @@ class ResNet(nn.Module):
 RESNET_CONFIGS = {
     'resnet18': (Bottleneck2Conv, [2, 2, 2, 2], [64, 128, 256, 512, 1024]),
     'resnet34': (Bottleneck2Conv, [3, 4, 6, 3], [64, 128, 256, 512, 1024]),
-    'resnet50': (Bottleneck3Conv, [3, 4, 6, 3], [64, 256, 512, 1024, 2048]),
-    'resnet101': (Bottleneck3Conv, [3, 4, 23, 3], [64, 256, 512, 1024, 2048]),
-    'resnet152': (Bottleneck3Conv, [3, 8, 36, 3], [64, 256, 512, 1024, 2048])
+    'resnet50': (Bottleneck3Conv, [3, 4, 6, 3], [64, 256, 512, 1024, 2048, 4096]),
+    'resnet101': (Bottleneck3Conv, [3, 4, 23, 3], [64, 256, 512, 1024, 2048, 4096]),
+    'resnet152': (Bottleneck3Conv, [3, 8, 36, 3], [64, 256, 512, 1024, 2048, 4096])
 }
 
 

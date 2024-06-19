@@ -79,7 +79,5 @@ Download link
 
 
 
-Pretraining weight models above resnet50 are currently under development and will be developed later.
-
 The train_logg.csv file lets you see how the learning progresses. Also, you can use the tensorboard.
 
