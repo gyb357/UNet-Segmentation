@@ -9,7 +9,7 @@ from resnet import resnet
 # resnet50 or higher is under development
 
 
-def norm_layer(norm: Optional[Callable[..., nn.Module]]) -> nn.Module:
+def norm_layer(norm: Optional[Callable[..., nn.Module]] = None) -> nn.Module:
     return operate(norm is None, nn.BatchNorm2d, norm)
 
 

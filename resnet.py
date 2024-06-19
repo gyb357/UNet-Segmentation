@@ -42,7 +42,7 @@ def conv3x3(
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=bias)
 
 
-def norm_layer(norm: Optional[Callable[..., nn.Module]]) -> nn.Module:
+def norm_layer(norm: Optional[Callable[..., nn.Module]] = None) -> nn.Module:
     return operate(norm is None, nn.BatchNorm2d, norm)
 
 
