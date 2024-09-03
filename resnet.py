@@ -190,11 +190,11 @@ class ResNet(nn.Module):
 
 
 RESNET_CONFIGS = {
-    'resnet18': (Bottleneck2Conv, [2, 2, 2, 2], [64, 128, 256, 512, 1024]),
-    'resnet34': (Bottleneck2Conv, [3, 4, 6, 3], [64, 128, 256, 512, 1024]),
-    'resnet50': (Bottleneck3Conv, [3, 4, 6, 3], [64, 256, 512, 1024, 2048]),
-    'resnet101': (Bottleneck3Conv, [3, 4, 23, 3], [64, 256, 512, 1024, 2048]),
-    'resnet152': (Bottleneck3Conv, [3, 8, 36, 3], [64, 256, 512, 1024, 2048])
+    'resnet18': (Bottleneck2Conv, [2, 2, 2, 2]),
+    'resnet34': (Bottleneck2Conv, [3, 4, 6, 3]),
+    'resnet50': (Bottleneck3Conv, [3, 4, 6, 3]),
+    'resnet101': (Bottleneck3Conv, [3, 4, 23, 3]),
+    'resnet152': (Bottleneck3Conv, [3, 8, 36, 3])
 }
 
 IMAGENET_1K_WEIGHTS = {
@@ -216,10 +216,10 @@ def resnet(
         zero_init_residual: bool = False,
         pretrained: bool = False
 ) -> Tuple[ResNet, List[int]]:
-    bottleneck, layers, filters = RESNET_CONFIGS[name]
+    bottleneck, layers = RESNET_CONFIGS[name]
     resnet = ResNet(bottleneck, layers, channels, num_classes, bias, normalize, init_weights, zero_init_residual)
 
     if pretrained:
         resnet.load_state_dict(torch.load(IMAGENET_1K_WEIGHTS[name]))
-    return resnet, filters
+    return resnet
 

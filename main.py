@@ -1,7 +1,7 @@
 from torch import device, cuda
 import torch.nn as nn
 from utils import load_config
-from unet import UNet, EnsembleUNet
+from unet_module import UNet, EnsembleUNet
 # from torchsummary import summary
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
 from train import Trainer
