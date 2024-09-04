@@ -1,245 +1,93 @@
+from typing import Optional, Callable, Tuple
 import torch.nn as nn
-from typing import List, Optional, Callable
-from unet_module import EncoderBlock, DoubleConv2d, DecoderBlock
+from utils import operate
 from torch import Tensor
 import torch
-from resnet import resnet
 
 
-class UNet(nn.Module):
-    filters: List[int] = [64, 128, 256, 512, 1024]
+def normalize_layer(normalize: Optional[Callable[..., nn.Module]] = None) -> nn.Module:
+    return operate(normalize is None, nn.BatchNorm2d, normalize)
+
+
+class DoubleConv2d(nn.Module):
+    stride: int = 1
+    padding: int = 1
 
     def __init__(
             self,
-            channels: int,
-            num_classes: int,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 3,
+            bias: bool = False,
+            normalize: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
+        super(DoubleConv2d, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size, self.stride, self.padding, bias=bias),
+            normalize_layer(normalize)(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size, self.stride, self.padding, bias=bias),
+            normalize_layer(normalize)(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.layers(x)
+
+
+class EncoderBlock(nn.Module):
+    pool_kernel_size: int = 2
+    pool_stride: int = 2
+
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 3,
+            bias: bool = False,
+            normalize: Optional[Callable[..., nn.Module]] = None,
+            dropout: float = 0.0
+    ) -> None:
+        super(EncoderBlock, self).__init__()
+        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, normalize)
+        self.pool = nn.MaxPool2d(self.pool_kernel_size, self.pool_stride)
+        self.drop = nn.Dropout(dropout)
+
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        x = self.conv(x)
+        p = self.pool(x)
+        p = self.drop(p)
+        return x, p
+
+
+class DecoderBlock(nn.Module):
+    trans_kernel_size: int = 2
+    trans_stride: int = 2
+
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
             kernel_size: int = 3,
             bias: bool = False,
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0,
+            up_in_channels: Optional[int] = None,
+            up_out_channels: Optional[int] = None
     ) -> None:
-        super(UNet, self).__init__()
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        super(DecoderBlock, self).__init__()
+        if up_in_channels is None:
+            up_in_channels = in_channels
+        if up_out_channels is None:
+            up_out_channels = out_channels
 
-        # Encoder
-        self.encoder = nn.ModuleList()
-        in_channels = channels
+        self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, self.trans_kernel_size, self.trans_stride, bias=bias)
+        self.conv = DoubleConv2d(in_channels, out_channels, kernel_size, bias, normalize)
+        self.drop = nn.Dropout(dropout)
 
-        for out_channels in self.filters[:-1]:
-            self.encoder.append(
-                EncoderBlock(in_channels, out_channels, kernel_size, bias, normalize, dropout)
-            )
-            in_channels = out_channels
-
-        # Center
-        self.center = DoubleConv2d(self.filters[-2], self.filters[-1], kernel_size, bias, normalize)
-
-        # Decoder
-        self.decoder = nn.ModuleList()
-
-        for i in range(len(self.filters) - 1):
-            self.decoder.append(
-                DecoderBlock(self.filters[-1 - i], self.filters[-2 - i], kernel_size, bias, normalize, dropout)
-            )
-
-        # Out
-        self.out = nn.Sequential(
-            nn.ConvTranspose2d(self.filters[0], self.filters[0], kernel_size=2, stride=2),
-            nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        x_out = []
-        e_out = x
-
-        # Encoder
-        p = x
-        for encoder in self.encoder:
-            x, p = encoder(p)
-            x_out.append(x)
-            e_out = p
-            print(p.shape)
-
-        # Center
-        c = self.center(e_out)
-        d = self.pool(c)
-        print(d.shape)
-
-        for i, decoder in enumerate(self.decoder):
-            x = x_out[-1 - i]
-            x = self.pool(x)
-            d = decoder(d, x)
-            print(d.shape)
-
-        # Out
-        out = self.out(d)
-        return out
-
-
-class SUNet(nn.Module):
-    filters: List[int] = [64, 128, 256, 512, 1024]
-    
-    def __init__(
-            self,
-            channels: int,
-            num_classes: int,
-            name: str,
-            pretrained: bool,
-            freeze_grad: bool = False,
-            kernel_size: int = 3,
-            bias: bool = False,
-            normalize: Optional[Callable[..., nn.Module]] = None,
-            dropout: float = 0.0
-    ) -> None:
-        super(SUNet, self).__init__()
-        self.backbone = resnet(name, channels, pretrained=pretrained)
-
-        for param in self.backbone.parameters():
-            param.requires_grad = not freeze_grad
-        
-        # Encoder
-        self.encoder = nn.Sequential(
-            self.backbone.conv1,
-            self.backbone.bn1,
-            self.backbone.relu,
-        )
-        self.pool = self.backbone.pool
-
-        # Center
-        self.center = DoubleConv2d(self.filters[-2], self.filters[-1], kernel_size, bias, normalize)
-
-        # Decoder
-        self.decoder = nn.ModuleList()
-
-        for i in range(len(self.filters) - 1):
-            self.decoder.append(
-                DecoderBlock(self.filters[-1 - i], self.filters[-2 - i], kernel_size, bias, normalize, dropout)
-            )
-        self.decoder.append(DecoderBlock(self.filters[1], self.filters[0], kernel_size, bias, normalize, dropout, self.filters[0], self.filters[0]))
-
-
-        # Out
-        self.out = nn.Sequential(
-            nn.ConvTranspose2d(self.filters[0], self.filters[0], kernel_size=2, stride=2),
-            nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        x_out = []
-        e_out = x
-
-        # Encoder
-        x = self.encoder(x)
-        p = self.pool(x)
-        x_out.append(x)
-        print(x.shape)
-
-        for name, module in self.backbone.named_children():
-            if name in ['layer1', 'layer2', 'layer3', 'layer4']:
-                p = module(p)
-                x_out.append(p)
-                e_out = p
-                print(p.shape)
-
-        # Center
-        c = self.center(e_out)
-        d = self.pool(c)
-        print(d.shape)
-
-        for i, decoder in enumerate(self.decoder):
-            x = x_out[-1 - i]
-            d = decoder(d, x)
-            print(d.shape)
-
-        # Out
-        out = self.out(d)
-        return out
-
-
-class DUNet(nn.Module):
-    filters: List[int] = [64, 256, 512, 1024, 2048]
-
-    def __init__(
-            self,
-            channels: int,
-            num_classes: int,
-            name: str,
-            pretrained: bool,
-            freeze_grad: bool = False,
-            kernel_size: int = 3,
-            bias: bool = False,
-            normalize: Optional[Callable[..., nn.Module]] = None,
-            dropout: float = 0.0
-    ) -> None:
-        super(DUNet, self).__init__()
-        self.backbone = resnet(name, channels, pretrained=pretrained)
-
-        for param in self.backbone.parameters():
-            param.requires_grad = not freeze_grad
-        
-        # Encoder
-        self.encoder = nn.Sequential(
-            self.backbone.conv1,
-            self.backbone.bn1,
-            self.backbone.relu,
-        )
-        self.pool = self.backbone.pool
-
-        # Center
-        self.center = DoubleConv2d(self.filters[-1], self.filters[-1]*2, kernel_size, bias, normalize)
-
-        # Decoder
-        self.decoder = nn.ModuleList()
-
-        for i in range(len(self.filters) - 2):
-            self.decoder.append(
-                DecoderBlock(self.filters[-1 - i]*2, self.filters[-2 - i]*2, kernel_size, bias, normalize, dropout)
-            )
-        self.decoder.append(DecoderBlock(self.filters[2], self.filters[1], kernel_size, bias, normalize, dropout, self.filters[2], self.filters[1]))
-        self.decoder.append(DecoderBlock(self.filters[0], self.filters[0], kernel_size, bias, normalize, dropout, self.filters[0], self.filters[0]))
-
-        # Out
-        self.out = nn.Sequential(
-            nn.ConvTranspose2d(self.filters[0], self.filters[0], kernel_size=2, stride=2),
-            nn.Conv2d(self.filters[0], num_classes, kernel_size=1)
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        x_out = []
-        e_out = x
-
-        # Encoder
-        x = self.encoder(x)
-        p = self.pool(x)
-        x_out.append(x)
-        print(x.shape)
-
-        for name, module in self.backbone.named_children():
-            if name in ['layer1', 'layer2', 'layer3', 'layer4']:
-                p = module(p)
-                x_out.append(p)
-                e_out = p
-                print(p.shape)
-
-        # Center
-        c = self.center(e_out)
-        d = self.pool(c)
-        print(d.shape)
-
-        for i, decoder in enumerate(self.decoder):
-            x = x_out[-1 - i]
-            d = decoder(d, x)
-            print(d.shape)
-
-        # Out
-        out = self.out(d)
-        return out
-
-
-# model = UNet(3, 1)
-model = DUNet(3, 1, 'resnet50', True)
-print(model)
-inp = torch.rand((1, 3, 320, 320))
-out = model(inp)
-print(out.shape)
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
+        x = self.trans(x1)
+        x = self.conv(torch.cat([x2, x], dim=1))
+        x = self.drop(x)
+        return x
 
