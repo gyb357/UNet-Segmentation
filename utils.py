@@ -7,6 +7,10 @@ def operate(a: bool, b, c) -> any:
     return b if a is True else c
 
 
+def operate_elif(a: bool, b, c: bool, d, e) -> any:
+    return b if a is True else operate(c, d, e)
+
+
 def tensor_to_numpy(tensor: Tensor) -> np.float32:
     return tensor.detach().cpu().numpy().astype(np.float32)
 

@@ -5,6 +5,15 @@ from torch import Tensor
 import torch
 
 
+IMAGENET_1K_WEIGHTS = {
+    'resnet18': 'model/pretrained/resnet18-f37072fd.pth',
+    'resnet34': 'model/pretrained/resnet34-b627a593.pth',
+    'resnet50': 'model/pretrained/resnet50-11ad3fa6.pth',
+    'resnet101': 'model/pretrained/resnet101-cd907fc2.pth',
+    'resnet152': 'model/pretrained/resnet152-f82ba261.pth'
+}
+
+
 def conv1x1_layer(
         in_channels: int,
         out_channels: int,
@@ -189,20 +198,12 @@ class ResNet(nn.Module):
         return x
 
 
-RESNET_CONFIGS = {
+resnet_configs = {
     'resnet18': (Bottleneck2Conv, [2, 2, 2, 2]),
     'resnet34': (Bottleneck2Conv, [3, 4, 6, 3]),
     'resnet50': (Bottleneck3Conv, [3, 4, 6, 3]),
     'resnet101': (Bottleneck3Conv, [3, 4, 23, 3]),
     'resnet152': (Bottleneck3Conv, [3, 8, 36, 3])
-}
-
-IMAGENET_1K_WEIGHTS = {
-    'resnet18': 'model/pretrained/resnet18-f37072fd.pth',
-    'resnet34': 'model/pretrained/resnet34-b627a593.pth',
-    'resnet50': 'model/pretrained/resnet50-11ad3fa6.pth',
-    'resnet101': 'model/pretrained/resnet101-cd907fc2.pth',
-    'resnet152': 'model/pretrained/resnet152-f82ba261.pth'
 }
 
 
@@ -215,8 +216,8 @@ def resnet(
         init_weights: bool = False,
         zero_init_residual: bool = False,
         pretrained: bool = False
-) -> Tuple[ResNet, List[int]]:
-    bottleneck, layers = RESNET_CONFIGS[name]
+) -> ResNet:
+    bottleneck, layers = resnet_configs[name]
     resnet = ResNet(bottleneck, layers, channels, num_classes, bias, normalize, init_weights, zero_init_residual)
 
     if pretrained:
