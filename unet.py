@@ -116,7 +116,7 @@ class UNet(nn.Module):
             self,
             channels: int,
             num_classes: int,
-            name: Optional[str] = None,
+            backbone_name: Optional[str] = None,
             pretrained: bool = False,
             freeze_grad: bool = False,
             kernel_size: int = 3,
@@ -127,20 +127,20 @@ class UNet(nn.Module):
     ) -> None:
         super(UNet, self).__init__()
         # Filters
-        self.filters = UNET_FILTERS[name]
+        self.filters = UNET_FILTERS[backbone_name]
         self.k = 1 # Filter coefficient
 
-        backbone_state = operate_elif(
-            name in ['resnet18', 'resnet34'], 's',               # shallow
-            name in ['resnet50', 'resnet101', 'resnet152'], 'd', # deep
+        self.backbone_state = operate_elif(
+            backbone_name in ['resnet18', 'resnet34'], 's',               # Shallow
+            backbone_name in ['resnet50', 'resnet101', 'resnet152'], 'd', # Deep
             None
         )
-        if backbone_state == 'd':
+        if self.backbone_state == 'd':
             self.k = 2
 
         # Encoder blocks (with backbone)
-        if name:
-            self.backbone = resnet(name, channels, pretrained=pretrained)
+        if self.backbone_state:
+            self.backbone = resnet(backbone_name, channels, pretrained=pretrained)
             for param in self.backbone.parameters():
                 param.requires_grad = not freeze_grad
 
@@ -167,15 +167,19 @@ class UNet(nn.Module):
 
         # Decoder blocks
         self.decoder = nn.ModuleList()
+        filters_len = len(self.filters) - 1
+        sub_k = 1
         
-        for i in range(len(self.filters) - 1):
-            self.decoder.append(
-                DecoderBlock(self.filters[-1 - i]*self.k, self.filters[-2 - i]*self.k, kernel_size, bias, normalize)
-            )
+        for i in range(filters_len):
+            if self.backbone_state == 'd' and i == filters_len - 1:
+                sub_k = 2
 
-        if backbone_state == 's':
+            self.decoder.append(
+                DecoderBlock(self.filters[-1 - i]*self.k, self.filters[-2 - i]*self.k*sub_k, kernel_size, bias, normalize)
+            )
+        if self.backbone_state == 's':
             self.decoder.append(DecoderBlock(128, 64, kernel_size, bias, normalize, dropout, 64, 64))
-        if backbone_state == 'd':
+        if self.backbone_state == 'd':
             self.decoder.append(DecoderBlock(192, 64, kernel_size, bias, normalize, dropout, 256, 128))
 
         # Out blocks
@@ -183,7 +187,7 @@ class UNet(nn.Module):
 
         # Initialize weights
         if init_weights:
-            init_targets = operate(name is None, self.modules(), [self.center, self.decoder, self.out])
+            init_targets = operate(self.backbone_state is None, self.modules(), [self.center, self.decoder, self.out])
 
             for module in init_targets:
                 for m in module.modules():
@@ -193,25 +197,11 @@ class UNet(nn.Module):
                         nn.init.constant_(m.weight, 1)
                         nn.init.constant_(m.bias, 0)
 
-
-
-        # Decoder blocks
-        self.decoder = nn.ModuleList()
-        filter_len = len(self.filters) - 1
-
-        for i in range(filter_len):
-            if name in ['resnet50', 'resnet101', 'resnet152']:
-                if i == filter_len - 1:
-                    k2 = 2
-            else:
-                k2 = 1
-
-
     def forward(self, x: Tensor) -> Tensor:
         x_out = []
 
         # Encoder (with backbone)
-        if hasattr(self, 'name'):
+        if self.backbone_state:
             x = self.encoder(x)
             p = self.pool(x)
             x_out.append(x)
@@ -236,8 +226,7 @@ class UNet(nn.Module):
         d = self.pool(c)
         for i, decoder in enumerate(self.decoder):
             x = x_out[-1 - i]
-
-            if not hasattr(self, 'name'):
+            if self.backbone_state is None:
                 x = self.pool(x)
 
             d = decoder(d, x)
@@ -255,10 +244,4 @@ class EnsembleUNet(nn.Module):
         out = [model(x) for model in self.unet]
         out = torch.mean(torch.stack(out), dim=0)
         return out
-
-
-model = UNet(channels=3, num_classes=1)
-inp = torch.rand((1, 3, 320, 320))
-out = model(inp)
-print(out.shape)
 

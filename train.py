@@ -1,35 +1,27 @@
-from typing import Tuple, Dict
-import csv
-import os
 from torch import Tensor
+import torch
 import matplotlib.pyplot as plt
 from utils import tensor_to_numpy
 import torch.nn as nn
+from typing import Dict, Tuple
 from torch.utils.data import DataLoader
 from torch import device
 import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
-import torch
-from miou import miou_coef
+import os
 from tqdm import tqdm
+from miou import miou_coefficient, miou_loss
+import csv
 import time
 
 
-COLUMNS = [
-    'Epoch',
-    'Train_loss',
-    'Train_loss_mini',
-    'Train_loss_micro',
-    'Train_miou',
-    'Val_loss',
-    'Val_miou'
-]
+COLUMNS = ['Epoch', 'Train_loss', 'Train_loss_mini', 'Train_loss_micro', 'Train_miou', 'Val_loss', 'Val_miou']
 
 
 def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
     if show_time > 0:
-        output = torch.sigmoid(output) # output = torch.softmax(output)
+        output = torch.sigmoid(output).float() # output = torch.softmax(output)
 
         plt.subplot(1, 2, 1)
         plt.title('Predicted mask')
@@ -85,37 +77,44 @@ class Trainer():
         torch.save(self.model.state_dict(), os.path.join(path, name))
         print(f'Model saved at {name}.')
 
-    def evaluate(self, dataset: DataLoader) -> Tuple[float, float]:
-        dataset_len = len(dataset)
+    def evaluate(self, dataloader: DataLoader) -> Tuple[float, float]:
+        dataset_len = len(dataloader)
+
         if dataset_len == 0:
             raise ValueError('The length of dataset must be at least 1.')
 
-        total_loss, total_miou = 0, 0
         self.model.eval()
+        total_loss, total_miou = 0, 0
+        
         with torch.no_grad():
-            for inputs, masks in tqdm(dataset):
+            for inputs, masks in tqdm(dataloader):
                 inputs, masks = inputs.to(self.device), masks.to(self.device)
+
+                # Mixed precision learning: FP32 -> FP16
                 with autocast():
                     # Forward propagation
                     outputs = self.model(inputs)
 
                     # Calculate loss
-                    total_loss += self.criterion(outputs, masks).item()
-                    total_miou += miou_coef(outputs, masks).item()
+                    total_loss += self.criterion(outputs, masks).item() + miou_loss(outputs, masks).item()
+                    total_miou += miou_coefficient(outputs, masks).item()
 
                     # Visualization
                     show_image(self.show_time, outputs, masks)
 
-        avg_loss = total_loss/dataset_len
-        avg_miou = total_miou/dataset_len
-        return avg_loss, avg_miou
+        total_loss /= dataset_len
+        total_miou /= dataset_len
+        return total_loss, total_miou
     
     def train(self, csv_path: str, csv_name: str, checkpoint_path: str, model_path: str) -> None:
-        if len(self.train_set) == 0:
+        dataset_len = len(self.train_set)
+
+        if dataset_len == 0:
             raise ValueError('The length of training dataset must be at least 1.')
         
         # Define logg recoder
         os.makedirs(csv_path, exist_ok=True)
+
         with open(f'{csv_path}{csv_name}', 'w', newline='') as csv_file:
             writer = csv.DictWriter(csv_file, COLUMNS)
             writer.writeheader()
@@ -137,12 +136,12 @@ class Trainer():
                         outputs = self.model(inputs)
     
                         # Calculate loss
-                        loss = self.criterion(outputs, masks)
+                        loss = self.criterion(outputs, masks) + miou_loss(outputs, masks).item()
                         loss_item = loss.item()
                         train_loss += loss_item
                         train_loss_mini += loss_item
                         train_loss_micro = loss_item
-                        train_miou += miou_coef(outputs, masks).item()
+                        train_miou += miou_coefficient(outputs, masks).item()
     
                     # Back propagation
                     self.scaler.scale(loss).backward()
@@ -163,8 +162,8 @@ class Trainer():
                         self.optim.zero_grad()
                         train_loss_mini /= self.accumulation_step
     
-                train_loss /= len(self.train_set)
-                train_miou /= len(self.train_set)
+                train_loss /= dataset_len
+                train_miou /= dataset_len
                 print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
     
                 # Evaluation
@@ -172,7 +171,7 @@ class Trainer():
                 self.scheduler.step(val_miou)
                 print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
 
-                # Train logg recode
+                # Recode train logg
                 values = [epoch, train_loss, train_loss_mini, train_loss_micro, train_miou, val_loss, val_miou]
                 data = {COLUMNS[i]: values[i] for i in range(len(COLUMNS))}
                 writer.writerow(data)

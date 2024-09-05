@@ -1,7 +1,7 @@
 from numpy import ndarray
 import matplotlib.pyplot as plt
 from typing import Type, Union
-from unet_module import EnsembleUNet, UNet
+from unet import EnsembleUNet, UNet
 from torch import device
 from dataset import Augmentation
 from PIL import Image

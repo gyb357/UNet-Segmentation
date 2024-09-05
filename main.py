@@ -1,8 +1,8 @@
 from torch import device, cuda
 import torch.nn as nn
 from utils import load_config
-from unet_module import UNet, EnsembleUNet
-# from torchsummary import summary
+from unet import UNet, EnsembleUNet
+from torchsummary import summary
 from dataset import Augmentation, SegmentationDataLoader, SegmentationDataset
 from train import Trainer
 from test import Tester
@@ -10,66 +10,65 @@ from test import Tester
 
 CONFIG_PATH = 'config/config.yaml'
 DEVICE = device('cuda' if cuda.is_available() else 'cpu')
-LOSS = nn.BCEWithLogitsLoss().to(DEVICE)
+LOSS = nn.BCEWithLogitsLoss().to(DEVICE) # LOSS = nn.CrossEntropyLoss().to(DEVICE)
 
 
 if __name__ == '__main__':
-    cfg = load_config(CONFIG_PATH)
-    trainer_cfg = cfg['trainer']
-    tester_cfg = cfg['tester']
-    
-    if trainer_cfg['train'] or tester_cfg['test']:
-        # Model
-        model_cfg = cfg['model']
+    config = load_config(CONFIG_PATH)
+    trainer_config = config['trainer']
+    tester_config = config['tester']
+
+    # Define model
+    if trainer_config['train'] or tester_config['test']:
+        model_config = config['model']
         model = UNet(
-            channels=model_cfg['channels'],
-            num_classes=model_cfg['num_classes'],
-            backbone=model_cfg['backbone'],
-            pretrained=model_cfg['pretrained'],
-            freeze_grad=model_cfg['freeze_grad'],
-            kernel_size=model_cfg['kernel_size'],
-            bias=model_cfg['bias'],
-            norm=model_cfg['norm'],
-            dropout=model_cfg['dropout'],
-            init_weights=model_cfg['init_weights']
+            channels=model_config['channels'],
+            num_classes=model_config['num_classes'],
+            backbone_name=model_config['backbone_name'],
+            pretrained=model_config['pretrained'],
+            freeze_grad=model_config['freeze_grad'],
+            kernel_size=model_config['kernel_size'],
+            bias=model_config['bias'],
+            normalize=model_config['normalize'],
+            dropout=model_config['dropout'],
+            init_weights=model_config['init_weights'],
         )
-        if model_cfg['ensemble'] is not None:
+        if model_config['ensemble']:
             unet_models = []
 
-            for ensemble_cfg in model_cfg['ensemble']:
-               print(ensemble_cfg)
-               unet = UNet(
-                    channels=ensemble_cfg['channels'],
-                    num_classes=ensemble_cfg['num_classes'],
-                    backbone=ensemble_cfg['backbone'],
-                    pretrained=ensemble_cfg['pretrained'],
-                    freeze_grad=ensemble_cfg['freeze_grad'],
-                    kernel_size=ensemble_cfg['kernel_size'],
-                    bias=ensemble_cfg['bias'],
-                    norm=ensemble_cfg['norm'],
-                    dropout=ensemble_cfg['dropout'],
-                    init_weights=ensemble_cfg['init_weights']
-               )
-               unet_models.append(unet)
+            for ensemble_config in model_config['ensemble']:
+                unet = UNet(
+                    channels=ensemble_config['channels'],
+                    num_classes=ensemble_config['num_classes'],
+                    backbone_name=ensemble_config['backbone_name'],
+                    pretrained=ensemble_config['pretrained'],
+                    freeze_grad=ensemble_config['freeze_grad'],
+                    kernel_size=ensemble_config['kernel_size'],
+                    bias=ensemble_config['bias'],
+                    normalize=ensemble_config['normalize'],
+                    dropout=ensemble_config['dropout'],
+                    init_weights=ensemble_config['init_weights'],
+                )
+                unet_models.append(unet)
             model = EnsembleUNet(unet_models)
         model.to(DEVICE)
 
-        # Augmentation
-        augmentation_cfg = cfg['augmentation']
+        # Define Augmentation
+        augmentation_config = config['augmentation']
         augmentation = Augmentation(
-             channels=augmentation_cfg['channels'],
-             resize=augmentation_cfg['resize'],
-             hflip=augmentation_cfg['hflip'],
-             vflip=augmentation_cfg['vflip'],
-             rotate=augmentation_cfg['rotate'],
-             saturation=augmentation_cfg['saturation'],
-             brightness=augmentation_cfg['brightness'],
-             factor=augmentation_cfg['factor'],
-             p=augmentation_cfg['p']
+             channels=augmentation_config['channels'],
+             resize=augmentation_config['resize'],
+             hflip=augmentation_config['hflip'],
+             vflip=augmentation_config['vflip'],
+             rotate=augmentation_config['rotate'],
+             saturation=augmentation_config['saturation'],
+             brightness=augmentation_config['brightness'],
+             factor=augmentation_config['factor'],
+             p=augmentation_config['p']
         )
 
-        # Dataloader
-        dataloader_cfg = cfg['dataloader']
+        # Define dataloader
+        dataloader_cfg = config['dataloader']
         dataloader = SegmentationDataLoader(
             image_path=dataloader_cfg['image_path'],
             mask_path=dataloader_cfg['mask_path'],
@@ -78,8 +77,8 @@ if __name__ == '__main__':
             augmentation=augmentation
         )
 
-        # Dataset
-        dataset_cfg = cfg['dataset']
+        # Define dataset
+        dataset_cfg = config['dataset']
         dataset = SegmentationDataset(
             dataset_loader=dataloader,
             dataset_split=dataset_cfg['dataset_split'],
@@ -88,43 +87,42 @@ if __name__ == '__main__':
             num_workers=dataset_cfg['num_workers'],
             pin_memory=dataset_cfg['pin_memory']
         )
+        summary(
+            model,
+            input_size=(augmentation_config['channels'], augmentation_config['resize'][0], augmentation_config['resize'][1]),
+            batch_size=dataset_cfg['batch_size']
+        )
 
-        # summary(
-        #     model,
-        #     input_size=(augmentation_cfg['channels'], augmentation_cfg['resize'][0], augmentation_cfg['resize'][1]),
-        #     batch_size=dataset_cfg['batch_size']
-        # )
-
-        # Trainer
-        if trainer_cfg['train']:
+        # Define trainer
+        if trainer_config['train']:
             trainer = Trainer(
                   model=model,
                   dataset=dataset.get_loader(debug=True),
-                  lr=trainer_cfg['lr'],
+                  lr=trainer_config['lr'],
                   loss=LOSS,
                   device=DEVICE,
-                  epochs=trainer_cfg['epochs'],
-                  accumulation_step=trainer_cfg['accumulation_step'],
-                  checkpoint_step=trainer_cfg['checkpoint_step'],
-                  show_time=trainer_cfg['show_time']
+                  epochs=trainer_config['epochs'],
+                  accumulation_step=trainer_config['accumulation_step'],
+                  checkpoint_step=trainer_config['checkpoint_step'],
+                  show_time=trainer_config['show_time']
             )
             trainer.train(
-                csv_path=trainer_cfg['csv_path'],
-                csv_name=trainer_cfg['csv_name'],
-                checkpoint_path=trainer_cfg['checkpoint_path'],
-                model_path=trainer_cfg['model_path']
+                csv_path=trainer_config['csv_path'],
+                csv_name=trainer_config['csv_name'],
+                checkpoint_path=trainer_config['checkpoint_path'],
+                model_path=trainer_config['model_path']
             )
 
-        # Tester
-        if tester_cfg['test']:
+        # Define tester
+        if tester_config['test']:
             tester = Tester(
                 model=model,
                 device=DEVICE,
                 augmentation=augmentation,
-                threshold=tester_cfg['threshold']
+                threshold=tester_config['threshold']
             )
             tester.test(
-                model_path=tester_cfg['model_path'],
-                image_path=tester_cfg['image_path']
+                model_path=tester_config['model_path'],
+                image_path=tester_config['image_path']
             )
 
