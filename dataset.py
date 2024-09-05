@@ -1,14 +1,16 @@
-from typing import Optional, Tuple, List, Dict
+from typing import Tuple, Optional, Dict, List
 import os
 import numpy as np
 from PIL import Image, ImageDraw
 from torchvision.transforms import functional as F
 import random as R
-from torch.utils.data import Dataset, random_split, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 from torch import Tensor
 
 
 class MaskDatasetGenerator():
+    """Generate a mask image with the Yolo v8 dataset format as input."""
+
     def __init__(
             self,
             label_path: str,
@@ -139,9 +141,11 @@ class SegmentationDataLoader(Dataset):
         return image, mask
     
     def __len__(self) -> int:
-        if self.num_images != 0 and self.num_images <= len(self.path['image']):
+        image_len = len(self.path['image'])
+
+        if self.num_images != 0 and self.num_images <= image_len:
             return self.num_images
-        return len(self.path['image'])
+        return image_len
 
 
 class SegmentationDataset():
@@ -175,7 +179,7 @@ class SegmentationDataset():
         test = dataset_len - train - val
         return train, val, test
     
-    def get_loader(self, debug: bool = False) -> Dict[str, DataLoader]:
+    def get_loader(self, debug: bool = False) -> Dict:
         train_len, val_len, test_len = self.get_length()
         train_set, val_set, test_set = random_split(self.dataset_loader, [train_len, val_len, test_len])
 
