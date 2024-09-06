@@ -11,7 +11,7 @@ from torch.cuda.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
 import os
 from tqdm import tqdm
-from miou import miou_coefficient, miou_loss
+from miou import miou_coefficient
 import csv
 import time
 
@@ -96,7 +96,7 @@ class Trainer():
                     outputs = self.model(inputs)
 
                     # Calculate loss
-                    total_loss += self.criterion(outputs, masks).item() + miou_loss(outputs, masks).item()
+                    total_loss += self.criterion(outputs, masks).item()
                     total_miou += miou_coefficient(outputs, masks).item()
 
                     # Visualization
@@ -136,7 +136,7 @@ class Trainer():
                         outputs = self.model(inputs)
     
                         # Calculate loss
-                        loss = self.criterion(outputs, masks) + miou_loss(outputs, masks).item()
+                        loss = self.criterion(outputs, masks)
                         loss_item = loss.item()
                         train_loss += loss_item
                         train_loss_mini += loss_item

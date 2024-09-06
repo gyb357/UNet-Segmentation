@@ -1,7 +1,7 @@
 model:
   channels: 3
   num_classes: 1
-  backbone_name: 'resnet50'
+  backbone_name: 'resnet34'
   pretrained: true
   freeze_grad: false
   kernel_size: 3
@@ -14,7 +14,7 @@ model:
     null
     # channels: 3
     # num_classes: 1
-    # backbone_name: 'resnet50'
+    # backbone_name: 'resnet34'
     # pretrained: true
     # freeze_grad: false
     # kernel_size: 3

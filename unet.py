@@ -175,10 +175,10 @@ class UNet(nn.Module):
         # Decoder blocks
         self.decoder = nn.ModuleList()
         filters_len = len(self.filters) - 1
-        k_ = 1
+        k_ = 1 # Sub filter coefficient for 50, 101, 152
         
         for i in range(filters_len):
-            if self.backbone_state and i == filters_len - 1:
+            if self.backbone_state == 'd' and i == filters_len - 1:
                 k_ = 2
                 
             self.decoder.append(
@@ -227,6 +227,7 @@ class UNet(nn.Module):
 
         # Decoder
         d = self.pool(c)
+
         for i, decoder in enumerate(self.decoder):
             x = x_out[-1 - i]
             if self.backbone_state is None:
