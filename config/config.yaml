@@ -1,15 +1,27 @@
 model:
   channels: 3
   num_classes: 1
-  backbone: null
+  backbone_name: 'resnet34'
   pretrained: true
   freeze_grad: false
   kernel_size: 3
   bias: false
-  norm: null
+  normalize: null
   dropout: 0.0
   init_weights: true
-  ensemble: 0
+
+  ensemble:
+    null
+    # channels: 3
+    # num_classes: 1
+    # backbone_name: 'resnet34'
+    # pretrained: true
+    # freeze_grad: false
+    # kernel_size: 3
+    # bias: false
+    # normalize: null
+    # dropout: 0.0
+    # init_weights: true
 
 augmentation:
   channels: 3
@@ -37,7 +49,7 @@ dataset:
 
 trainer:
   train: true
-  lr: 0.0001
+  lr: 0.0005
   epochs: 100
   accumulation_step: 4
   checkpoint_step: 20

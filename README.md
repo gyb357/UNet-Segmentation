@@ -7,7 +7,7 @@ This repository contains an implementation of a UNet model with a ResNet backbon
 
 ## Introduction
 
-UNet is a popular convolutional neural network architecture for biomedical image segmentation. It consists of a contracting path to capture context and a symmetric expanding path that enables precise localization. By incorporating a ResNet backbone, this implementation enhances the feature extraction capabilities of the encoder, potentially improving segmentation performance. Additionally, an ensemble model is provided to combine multiple UNet models for improved performance.
+UNet is a popular convolutional neural network architecture for biomedical image segmentation. It consists of a contracting path to capture context and a symmetric expanding path that enables precise localization.
 
 
 
@@ -44,6 +44,7 @@ The repository is structured as follows:
 ├── dataset.py            # Script for dataset preparation
 ├── main.py               # Main script to run the training and evaluation
 ├── miou.py               # Script to calculate mean Intersection over Union (mIoU)
+├── plot.py               # Show train_logg.csv with matplotlib
 ├── requirement.txt       # Required dependencies
 ├── resnet.py             # ResNet model definition
 ├── test.py               # Script for testing/evaluation
@@ -61,7 +62,7 @@ The repository is structured as follows:
 2. Place a dataset or prelearning weight in the specified file.
 3. Run main.py to learn and test the model.
 4. In cmd, enter the "tensorboard --logdir= your tensorboard log dir" and access the web browser at "localhost:6006" to check the tensorboard.
-
+   (or, run plot.py.)
 
 
 
@@ -78,8 +79,6 @@ Download link
 
 
 
-
-Pretraining weight models above resnet50 are currently under development and will be developed later.
 
 The train_logg.csv file lets you see how the learning progresses. Also, you can use the tensorboard.
 
