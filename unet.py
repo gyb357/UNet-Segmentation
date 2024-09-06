@@ -128,7 +128,7 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         # Filters
         self.filters = UNET_FILTERS[backbone_name]
-        self.k = 1 # Filter coefficient
+        self.k = 0 # Filter coefficient
 
         self.backbone_state = operate_elif(
             backbone_name in ['resnet18', 'resnet34'], 's',               # Shallow
@@ -136,7 +136,7 @@ class UNet(nn.Module):
             None
         )
         if self.backbone_state == 'd':
-            self.k = 2
+            self.k = 1
 
         # Encoder blocks (with backbone)
         if self.backbone_state:
@@ -167,20 +167,17 @@ class UNet(nn.Module):
 
         # Decoder blocks
         self.decoder = nn.ModuleList()
-        filters_len = len(self.filters) - 1
-        sub_k = 1
+        filters_len = len(self.filters) - 1 - self.k
         
         for i in range(filters_len):
-            if self.backbone_state == 'd' and i == filters_len - 1:
-                sub_k = 2
-
             self.decoder.append(
-                DecoderBlock(self.filters[-1 - i]*self.k, self.filters[-2 - i]*self.k*sub_k, kernel_size, bias, normalize)
+                DecoderBlock(self.filters[-1 - i], self.filters[-2 - i], kernel_size, bias, normalize)
             )
         if self.backbone_state == 's':
             self.decoder.append(DecoderBlock(128, 64, kernel_size, bias, normalize, dropout, 64, 64))
         if self.backbone_state == 'd':
             self.decoder.append(DecoderBlock(192, 64, kernel_size, bias, normalize, dropout, 256, 128))
+            self.decoder.append(DecoderBlock(67, 64, kernel_size, bias, normalize, dropout, 128, 64))
 
         # Out blocks
         self.out = OutBlock(self.filters[0], self.filters[0], num_classes)
