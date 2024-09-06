@@ -67,7 +67,7 @@ class Trainer():
         self.optim = optim.Adam(model.parameters(), lr)
         self.criterion = loss
         self.scaler = GradScaler()
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, 'max', patience=5)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='min', factor=0.1, patience=10, verbose=True)
 
         # Tensorboard
         self.tensorboard = SummaryWriter()

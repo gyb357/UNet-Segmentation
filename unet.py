@@ -128,7 +128,7 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         # Filters
         self.filters = UNET_FILTERS[backbone_name]
-        self.k = 0 # Filter coefficient
+        self.k = 1 # Filter coefficient
 
         self.backbone_state = operate_elif(
             backbone_name in ['resnet18', 'resnet34'], 's',               # Shallow
@@ -136,20 +136,27 @@ class UNet(nn.Module):
             None
         )
         if self.backbone_state == 'd':
-            self.k = 1
+            self.k = 2
 
         # Encoder blocks (with backbone)
         if self.backbone_state:
             self.backbone = resnet(backbone_name, channels, pretrained=pretrained)
+
             for param in self.backbone.parameters():
                 param.requires_grad = not freeze_grad
 
-            self.encoder = nn.Sequential(
+            self.encoder_input = nn.Sequential(
                 self.backbone.conv1,
                 self.backbone.bn1,
                 self.backbone.relu
             )
+            self.encoder = nn.ModuleList()
             self.pool = self.backbone.pool
+
+            for name, module in self.backbone.named_children():
+                if name in ['layer1', 'layer2', 'layer3', 'layer4']:
+                    self.encoder.append(module)
+
         # Encoder blocks (without backbone)
         else:
             self.encoder = nn.ModuleList()
@@ -167,17 +174,18 @@ class UNet(nn.Module):
 
         # Decoder blocks
         self.decoder = nn.ModuleList()
-        filters_len = len(self.filters) - 1 - self.k
+        filters_len = len(self.filters) - 1
+        k_ = 1
         
         for i in range(filters_len):
+            if self.backbone_state and i == filters_len - 1:
+                k_ = 2
+                
             self.decoder.append(
-                DecoderBlock(self.filters[-1 - i], self.filters[-2 - i], kernel_size, bias, normalize)
+                DecoderBlock(self.filters[-1 - i]*self.k, self.filters[-2 - i]*self.k*k_, kernel_size, bias, normalize)
             )
-        if self.backbone_state == 's':
-            self.decoder.append(DecoderBlock(128, 64, kernel_size, bias, normalize, dropout, 64, 64))
-        if self.backbone_state == 'd':
-            self.decoder.append(DecoderBlock(192, 64, kernel_size, bias, normalize, dropout, 256, 128))
-            self.decoder.append(DecoderBlock(67, 64, kernel_size, bias, normalize, dropout, 128, 64))
+        if self.backbone_state == 's': self.decoder.append(DecoderBlock(128, 64, kernel_size, bias, normalize, dropout, 64, 64))
+        if self.backbone_state == 'd': self.decoder.append(DecoderBlock(192, 64, kernel_size, bias, normalize, dropout, 256, 128))
 
         # Out blocks
         self.out = OutBlock(self.filters[0], self.filters[0], num_classes)
@@ -197,24 +205,22 @@ class UNet(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x_out = []
 
-        # Encoder (with backbone)
+        # Encoder
         if self.backbone_state:
-            x = self.encoder(x)
+            x = self.encoder_input(x)
             p = self.pool(x)
             x_out.append(x)
-
-            for name, module in self.backbone.named_children():
-                if name in ['layer1', 'layer2', 'layer3', 'layer4']:
-                    p = module(p)
-                    x_out.append(p)
-                    e_out = p
-        # Encoder (without backbone)
         else:
             p = x
-            for encoder in self.encoder:
+
+        for encoder in self.encoder:
+            if self.backbone_state:
+                p = encoder(p)
+                x_out.append(p)
+            else:
                 x, p = encoder(p)
                 x_out.append(x)
-                e_out = p
+            e_out = p
 
         # Center
         c = self.center(e_out)
