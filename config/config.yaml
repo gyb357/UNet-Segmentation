@@ -50,6 +50,7 @@ dataset:
 trainer:
   train: true
   lr: 0.0005
+  loss_coefficient: {'loss': 1, 'miou': 1}
   epochs: 100
   accumulation_step: 4
   checkpoint_step: 20

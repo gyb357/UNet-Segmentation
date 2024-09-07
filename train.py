@@ -11,7 +11,7 @@ from torch.cuda.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
 import os
 from tqdm import tqdm
-from miou import miou_coefficient
+from loss import miou_loss, miou_coefficient
 import csv
 import time
 
@@ -40,9 +40,10 @@ class Trainer():
     def __init__(
             self,
             model: nn.Module,
-            dataset: Dict[str, DataLoader],
+            dataset: Dict[str: DataLoader],
             lr: float,
             loss: nn.Module,
+            loss_coefficient: Dict[str: float],
             device: device,
             epochs: int,
             accumulation_step: int,
@@ -67,7 +68,11 @@ class Trainer():
         self.optim = optim.Adam(model.parameters(), lr)
         self.criterion = loss
         self.scaler = GradScaler()
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='min', factor=0.1, patience=10, verbose=True)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optim, 'max', patience=5)
+
+        # Loss coefficient
+        self.loss_coef = loss_coefficient['loss']
+        self.miou_coef = loss_coefficient['miou']
 
         # Tensorboard
         self.tensorboard = SummaryWriter()
@@ -95,8 +100,8 @@ class Trainer():
                     # Forward propagation
                     outputs = self.model(inputs)
 
-                    # Calculate loss
-                    total_loss += self.criterion(outputs, masks).item()
+                    # Calculate loss (Basic loss with Jaccard loss)
+                    total_loss += (self.criterion(outputs, masks)*self.loss_coef + miou_loss(outputs, masks)*self.miou_coef).item()
                     total_miou += miou_coefficient(outputs, masks).item()
 
                     # Visualization
@@ -135,8 +140,8 @@ class Trainer():
                         # Forward propagation
                         outputs = self.model(inputs)
     
-                        # Calculate loss
-                        loss = self.criterion(outputs, masks)
+                        # Calculate loss (Basic loss with Jaccard loss)
+                        loss = (self.criterion(outputs, masks)*self.loss_coef + miou_loss(outputs, masks)*self.miou_coef).item()
                         loss_item = loss.item()
                         train_loss += loss_item
                         train_loss_mini += loss_item
