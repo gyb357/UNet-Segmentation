@@ -61,7 +61,7 @@ trainer:
   model_path: 'model'
 
 tester:
-  test: true
+  test: False
   threshold: 0.8
   model_path: 'model/model.pth'
   image_path: 'dataset/test/test.jpg'
