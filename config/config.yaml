@@ -49,12 +49,12 @@ dataset:
 
 trainer:
   train: true
-  lr: 0.0005
+  lr: 0.0001
   loss_coefficient: {'loss': 1, 'miou': 1}
   epochs: 100
   accumulation_step: 4
   checkpoint_step: 20
-  show_time: 0.5
+  show_time: 0.0
   csv_path: 'csv/'
   csv_name: 'train_logg.csv'
   checkpoint_path: 'model/checkpoint'
