@@ -11,7 +11,7 @@ from torch.cuda.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
 import os
 from tqdm import tqdm
-from loss import miou_loss, miou_coefficient
+from loss import miou_loss, miou_coefficient, dice_loss, dice_coefficient
 import csv
 import time
 
@@ -72,7 +72,7 @@ class Trainer():
 
         # Loss coefficient
         self.loss_coef = loss_coefficient['loss']
-        self.miou_coef = loss_coefficient['miou']
+        self.metrics_coef = loss_coefficient['metrics']
 
         # Tensorboard
         self.tensorboard = SummaryWriter()
@@ -100,9 +100,9 @@ class Trainer():
                     # Forward propagation
                     outputs = self.model(inputs)
 
-                    # Calculate loss (Basic loss with Jaccard loss)
-                    total_loss += (self.criterion(outputs, masks)*self.loss_coef + miou_loss(outputs, masks)*self.miou_coef).item()
-                    total_miou += miou_coefficient(outputs, masks).item()
+                    # Calculate loss
+                    total_loss += (self.criterion(outputs, masks)*self.loss_coef + dice_loss(outputs, masks)*self.miou_coef).item()
+                    total_miou += dice_coefficient(outputs, masks).item()
 
                     # Visualization
                     show_image(self.show_time, outputs, masks)
@@ -140,13 +140,13 @@ class Trainer():
                         # Forward propagation
                         outputs = self.model(inputs)
     
-                        # Calculate loss (Basic loss with Jaccard loss)
-                        loss = (self.criterion(outputs, masks)*self.loss_coef + miou_loss(outputs, masks)*self.miou_coef).item()
+                        # Calculate loss
+                        loss = (self.criterion(outputs, masks)*self.loss_coef + dice_loss(outputs, masks)*self.miou_coef).item()
                         loss_item = loss.item()
                         train_loss += loss_item
                         train_loss_mini += loss_item
                         train_loss_micro = loss_item
-                        train_miou += miou_coefficient(outputs, masks).item()
+                        train_miou += dice_coefficient(outputs, masks).item()
     
                     # Back propagation
                     self.scaler.scale(loss).backward()
