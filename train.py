@@ -16,7 +16,7 @@ import csv
 import time
 
 
-COLUMNS = ['Epoch', 'Train_loss', 'Train_loss_mini', 'Train_loss_micro', 'Train_miou', 'Val_loss', 'Val_miou']
+COLUMNS = ['Epoch', 'Train_loss', 'Train_loss_mini', 'Train_loss_micro', 'Train_metrics', 'Val_loss', 'Val_metrics']
 
 
 def show_image(show_time: float, output: Tensor, mask: Tensor) -> None:
@@ -40,10 +40,10 @@ class Trainer():
     def __init__(
             self,
             model: nn.Module,
-            dataset: Dict[str: DataLoader],
+            dataset: Dict[str, DataLoader],
             lr: float,
             loss: nn.Module,
-            loss_coefficient: Dict[str: float],
+            loss_coefficient: Dict[str, float],
             device: device,
             epochs: int,
             accumulation_step: int,
@@ -89,7 +89,7 @@ class Trainer():
             raise ValueError('The length of dataset must be at least 1.')
 
         self.model.eval()
-        total_loss, total_miou = 0, 0
+        total_loss, total_metrics = 0, 0
         
         with torch.no_grad():
             for inputs, masks in tqdm(dataloader):
@@ -101,15 +101,15 @@ class Trainer():
                     outputs = self.model(inputs)
 
                     # Calculate loss
-                    total_loss += (self.criterion(outputs, masks)*self.loss_coef + dice_loss(outputs, masks)*self.miou_coef).item()
-                    total_miou += dice_coefficient(outputs, masks).item()
+                    total_loss += (self.criterion(outputs, masks)*self.loss_coef + dice_loss(outputs, masks)*self.metrics_coef).item()
+                    total_metrics += dice_coefficient(outputs, masks).item()
 
                     # Visualization
                     show_image(self.show_time, outputs, masks)
 
         total_loss /= dataset_len
-        total_miou /= dataset_len
-        return total_loss, total_miou
+        total_metrics /= dataset_len
+        return total_loss, total_metrics
     
     def train(self, csv_path: str, csv_name: str, checkpoint_path: str, model_path: str) -> None:
         dataset_len = len(self.train_set)
@@ -130,7 +130,7 @@ class Trainer():
             # Train
             for epoch in range(1, self.epochs + 1):
                 self.model.train()
-                train_loss, train_loss_mini, train_loss_micro, train_miou = 0, 0, 0, 0
+                train_loss, train_loss_mini, train_loss_micro, train_metrics = 0, 0, 0, 0
 
                 for i, (inputs, masks) in enumerate(tqdm(self.train_set), start=1):
                     inputs, masks = inputs.to(self.device), masks.to(self.device)
@@ -141,12 +141,12 @@ class Trainer():
                         outputs = self.model(inputs)
     
                         # Calculate loss
-                        loss = (self.criterion(outputs, masks)*self.loss_coef + dice_loss(outputs, masks)*self.miou_coef).item()
+                        loss = self.criterion(outputs, masks)*self.loss_coef + dice_loss(outputs, masks)*self.metrics_coef
                         loss_item = loss.item()
                         train_loss += loss_item
                         train_loss_mini += loss_item
                         train_loss_micro = loss_item
-                        train_miou += dice_coefficient(outputs, masks).item()
+                        train_metrics += dice_coefficient(outputs, masks).item()
     
                     # Back propagation
                     self.scaler.scale(loss).backward()
@@ -168,16 +168,16 @@ class Trainer():
                         train_loss_mini /= self.accumulation_step
     
                 train_loss /= dataset_len
-                train_miou /= dataset_len
-                print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_miou: {train_miou}')
+                train_metrics /= dataset_len
+                print(f'Epoch: {epoch}, Train_loss: {train_loss}, Train_loss_mini: {train_loss_mini}, Train_loss_micro: {train_loss_micro}, Train_metrics: {train_metrics}')
     
                 # Evaluation
-                val_loss, val_miou = self.evaluate(self.val_set)
-                self.scheduler.step(val_miou)
-                print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_miou: {val_miou}')
+                val_loss, val_metrics = self.evaluate(self.val_set)
+                self.scheduler.step(val_metrics)
+                print(f'Epoch: {epoch}, Val_loss: {val_loss}, Val_metrics: {val_metrics}')
 
                 # Recode train logg
-                values = [epoch, train_loss, train_loss_mini, train_loss_micro, train_miou, val_loss, val_miou]
+                values = [epoch, train_loss, train_loss_mini, train_loss_micro, train_metrics, val_loss, val_metrics]
                 data = {COLUMNS[i]: values[i] for i in range(len(COLUMNS))}
                 writer.writerow(data)
 
@@ -185,8 +185,8 @@ class Trainer():
                     self.tensorboard.add_scalar(COLUMNS[i], values[i], epoch)
 
                 # Test
-                test_loss, test_miou = self.evaluate(self.test_set)
-                print(f'Test_loss: {test_loss}, Test_miou: {test_miou}')
+                test_loss, test_metrics = self.evaluate(self.test_set)
+                print(f'Test_loss: {test_loss}, Test_metrics: {test_metrics}')
 
                 # Checkpoint save
                 if epoch % self.checkpoint_step == 0:
