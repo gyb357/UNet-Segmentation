@@ -24,7 +24,7 @@ def dice_coefficient(outputs: Tensor, masks: Tensor, smooth: float = 1e-6) -> Te
     union = output.sum().float().item() + mask.sum().float().item()
 
     dice = (2*intersect + smooth)/(union + smooth)
-    return dice
+    return np.float32(dice)
 
 
 def miou_loss(outputs: Tensor, masks: Tensor, smooth: float = 1e-6) -> Tensor:
