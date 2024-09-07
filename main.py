@@ -100,6 +100,7 @@ if __name__ == '__main__':
                   dataset=dataset.get_loader(debug=True),
                   lr=trainer_config['lr'],
                   loss=LOSS,
+                  loss_coefficient=trainer_config['loss_coefficient'],
                   device=DEVICE,
                   epochs=trainer_config['epochs'],
                   accumulation_step=trainer_config['accumulation_step'],

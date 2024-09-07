@@ -3,11 +3,11 @@ import numpy as np
 import yaml
 
 
-def operate(a: bool, b, c) -> any:
+def operate(a: bool, b: any, c: any) -> any:
     return b if a is True else c
 
 
-def operate_elif(a: bool, b, c: bool, d, e) -> any:
+def operate_elif(a: bool, b: any, c: bool, d: any, e: any) -> any:
     return b if a is True else operate(c, d, e)
 
 

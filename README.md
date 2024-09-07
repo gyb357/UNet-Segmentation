@@ -43,7 +43,7 @@ The repository is structured as follows:
 │
 ├── dataset.py            # Script for dataset preparation
 ├── main.py               # Main script to run the training and evaluation
-├── miou.py               # Script to calculate mean Intersection over Union (mIoU)
+├── loss.py               # Script to calculate loss (mIoU, Dice)
 ├── plot.py               # Show train_logg.csv with matplotlib
 ├── requirement.txt       # Required dependencies
 ├── resnet.py             # ResNet model definition

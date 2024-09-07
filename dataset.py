@@ -113,7 +113,7 @@ class SegmentationDataLoader(Dataset):
         self.augmentation = augmentation
         self.path = self.get_path(self.get_file(image_path), self.get_file(mask_path))
 
-    def get_path(self, images: list, masks: list) -> Dict[str, List[str]]:
+    def get_path(self, images: list, masks: list) -> Dict[str: List[str]]:
         path = {
             'image': [],
             'mask': []
@@ -149,12 +149,12 @@ class SegmentationDataLoader(Dataset):
 
 
 class SegmentationDataset():
-    default_split: Dict[str, float] = {'train': 0.8, 'val': 0.1}
+    default_split: Dict[str: float] = {'train': 0.8, 'val': 0.1}
 
     def __init__(
             self,
             dataset_loader: SegmentationDataLoader,
-            dataset_split: Dict[str, float],
+            dataset_split: Dict[str: float],
             batch_size: int,
             shuffle: bool = False,
             num_workers: int = 0,
@@ -179,7 +179,7 @@ class SegmentationDataset():
         test = dataset_len - train - val
         return train, val, test
     
-    def get_loader(self, debug: bool = False) -> Dict:
+    def get_loader(self, debug: bool = False) -> Dict[str: DataLoader]:
         train_len, val_len, test_len = self.get_length()
         train_set, val_set, test_set = random_split(self.dataset_loader, [train_len, val_len, test_len])
 
