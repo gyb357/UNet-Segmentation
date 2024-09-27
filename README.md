@@ -12,6 +12,13 @@ UNet is a popular convolutional neural network architecture for biomedical image
 
 
 
+## U-Net Architecture
+
+![U-Net Architecture](image/u-net.png)
+
+
+
+
 ## Installation
 
 To get started, clone the repository and install the required dependencies:
