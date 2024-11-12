@@ -127,6 +127,9 @@ class Trainer():
             # Train start time
             start_time = time.time()
 
+            # empty the cache
+            torch.cuda.empty_cache()
+
             # Train
             for epoch in range(1, self.epochs + 1):
                 self.model.train()
