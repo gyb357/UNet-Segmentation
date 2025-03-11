@@ -13,7 +13,7 @@ class DoubleConv2d(nn.Module):
             normalize: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super(DoubleConv2d, self).__init__()
-        normalize = normalize if normalize is not None else nn.BatchNorm2d
+        normalize = normalize or nn.BatchNorm2d
 
         self.layers = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=bias),
