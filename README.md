@@ -1,8 +1,18 @@
 # Table of Contents
 1. [Introduction](#Introduction)
+     * Advanced UNet Implementations with ResNet Backbone
+     * Purpose of the Project
 2. [Architecture Overview](#Architecture-Overview)
+     * UNet
+     * UNet++
+     * UNet3+
+     * ResNet Backbone
 3. [Getting Started](#Getting-Started)
-4. 
+     1. Check the Running Environment
+     2. Installation and Dependencies
+     3. Downloading Pre-Trained ResNet Weights
+     4. 
+4. [Project Structure](#Project-Structure)
 5. 
 6. 
 7. 
@@ -18,9 +28,6 @@ This repository implements multiple UNet-based architectures with ResNet backbon
 
 ## Purpose of the Project
 This project focuses on implementing and comparing various UNet architectures, integrating them with powerful ResNet backbones to create high-performance segmentation models. The implementation supports seamless switching between different UNet variants to find the optimal architecture for specific segmentation tasks.
-
- > [!Note]
- > All implementations (UNet, UNet++, UNet3+) are fully compatible with ResNet backbones of different depths (18, 34, 50, 101, 152).
 
 
 *****
@@ -39,11 +46,20 @@ UNet++ redesigns the skip connections with a nested dense structure, effectively
 ## UNet3+
 UNet3+ takes a full-scale approach by introducing extensive skip connections that link each decoder stage with all encoder stages, rather than just the corresponding level. This multi-scale feature fusion integrates high-level semantic information with low-level spatial details at every decoder level, enhancing both fine-grained segmentation and global context awareness.
 
+## ResNet Backbone
+
+![resnet](assets/resnet.png)
+
+ResNet (Residual Network) is a deep neural network architecture known for its residual connections, which help mitigate the vanishing gradient problem in deep networks. By leveraging these residual connections, ResNet allows training of very deep models while maintaining efficient gradient flow.
+
+In this project, ResNet serves as the encoder in UNet-based architectures.
+
 
 *****
 
 
 # 📋Model Comparison
+
 
 
 *****
@@ -66,13 +82,17 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 # 📁Project Structure
 
 ```bash
-
-
-
-
-
-
-
+UNet-Segmentation
+├── assets/
+│   └── unet.png
+├── model/
+│   ├── modules.py
+│   ├── resnet.py
+│   ├── unet.py
+│   ├── unet++.py
+│   └── unet3+.py
+├── train/
+│   └── trainer.py
 
 
 ```
