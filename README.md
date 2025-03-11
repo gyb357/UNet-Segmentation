@@ -28,6 +28,8 @@ This project focuses on implementing and comparing various UNet architectures, i
 
 # Architecture Overview
 
+![unet](assets/unet.png)
+
 ## UNet
 
 ## UNet++
