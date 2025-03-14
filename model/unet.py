@@ -1,18 +1,27 @@
-from typing import Optional, Callable, List
-from modules import DoubleConv2d, EncoderBlock, DecoderBlock, OutBlock
-from torch import Tensor
-from resnet import resnet
 import torch.nn as nn
-import torch
+from typing import Optional, Callable
+from utils import ternary_op_elif
+from resnet import resnet
+from modules import EncoderBlock, DoubleConv2d, DecoderBlock, OutputBlock
+from torch import Tensor
 
 
-UNET_FILTERS = {
-    None: (64, 128, 256, 512, 1024),
-    'resnet18': (64, 128, 256, 512, 1024),
-    'resnet34': (64, 128, 256, 512, 1024),
-    'resnet50': (64, 256, 512, 1024, 2048),
-    'resnet101': (64, 256, 512, 1024, 2048),
-    'resnet152': (64, 256, 512, 1024, 2048)
+# UNet's decoder layers filter configuration
+UNET_CONFIGS = {
+    # Conv filters
+    'convolution':
+    {
+        None: [1024, 512, 256, 128, 64],
+        'shal': [768, 384, 192, 128, 64],
+        'deep': [1536, 768, 384, 128, 64],
+    },
+    # Transpose filters
+    'transpose':
+    {
+        None: [1024, 512, 256, 128, 64],
+        'shal': [512, 512, 256, 128, 64],
+        'deep': [2048, 512, 256, 128, 64, 32],
+    }
 }
 
 
@@ -21,124 +30,98 @@ class UNet(nn.Module):
             self,
             channels: int,
             num_classes: int,
-            backbone_name: Optional[str] = None,
-            pretrained: bool = False,
-            freeze_grad: bool = False,
+            backbone: Optional[str] = None,
+            pretrained: Optional[str] = None,
+            freeze_backbone: bool = False,
             bias: bool = False,
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0,
-            init_weights: bool = False
+            init_weights: bool = False,
     ) -> None:
         super(UNet, self).__init__()
-        self.backbone_name = backbone_name
 
-        # filters
-        filters = UNET_FILTERS[backbone_name]
+        # Attributes
+        self.backbone = backbone
+        # Depth of the backbone
+        self.backbone_depth = ternary_op_elif(
+            backbone in ['resnet18', 'resnet34'], 'shal',
+            backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
+            None
+        )
+        # Set the decoder filters from the configuration
+        self.decoder_conv_filters = UNET_CONFIGS['convolution'][self.backbone_depth]
+        self.decoder_trans_filters = UNET_CONFIGS['transpose'][self.backbone_depth]
 
-        # filter coefficient
-        k = 1 if backbone_name in ['resnet18', 'resnet34'] else 2
-        
-        # encoder blocks (with backbone)
-        if backbone_name:
-            backbone = resnet(backbone_name, channels, pretrained=pretrained)
+        # Encoder layers
+        if backbone:
+            encoder_layers = list(resnet(backbone, pretrained, channels).children())
 
-            # gradient freeze
-            for param in backbone.parameters():
-                param.requires_grad = not freeze_grad
-
-            self.encoder_input = nn.Sequential(
-                backbone.conv1,
-                backbone.bn1,
-                backbone.relu
-            )
-            self.encoder = nn.ModuleList()
-            self.maxpool = backbone.maxpool
-
-            for name, module in backbone.named_children():
-                if name in ['layer1', 'layer2', 'layer3', 'layer4']:
-                    self.encoder.append(module)
-
-        # encoder blocks (without backbone)
+            self.e1 = nn.Sequential(*encoder_layers[:3])
+            self.e2 = nn.Sequential(*encoder_layers[3:5])
+            self.e3 = encoder_layers[5]
+            self.e4 = encoder_layers[6]
+            self.e5 = encoder_layers[7]
         else:
-            self.encoder = nn.ModuleList()
-            self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-            in_channels = channels
+            self.e1 = EncoderBlock(channels, 64, bias, normalize, dropout)
+            self.e2 = EncoderBlock(64, 128, bias, normalize, dropout)
+            self.e3 = EncoderBlock(128, 256, bias, normalize, dropout)
+            self.e4 = EncoderBlock(256, 512, bias, normalize, dropout)
 
-            for out_channels in filters[:-1]:
-                self.encoder.append(EncoderBlock(in_channels, out_channels, bias, normalize, dropout))
-                in_channels = out_channels
+            # Center layer
+            self.e5 = DoubleConv2d(512, 1024, bias, normalize)
 
-        # center blocks
-        self.center = DoubleConv2d(filters[-2]*k, filters[-1]*k, bias, normalize)
+        # Decoder layers
+        self.d1 = DecoderBlock(self.decoder_conv_filters[0], 512, bias, normalize, dropout, self.decoder_trans_filters[0], 512)
+        self.d2 = DecoderBlock(self.decoder_conv_filters[1], 256, bias, normalize, dropout, self.decoder_trans_filters[1], 256)
+        self.d3 = DecoderBlock(self.decoder_conv_filters[2], 128, bias, normalize, dropout, self.decoder_trans_filters[2], 128)
+        self.d4 = DecoderBlock(self.decoder_conv_filters[3], 64, bias, normalize, dropout, self.decoder_trans_filters[3], 64)
 
-        # decoder blocks
-        self.decoder = nn.ModuleList()
+        # Output layer
+        self.out = OutputBlock(self.decoder_conv_filters[4], num_classes, backbone)
 
-        for i in range(len(filters) - 1):
-            in_channels = filters[-1 - i]*k
-            out_channels = filters[-2 - i]*k
-
-            if k == 2 and i == len(filters) - 2:
-                out_channels *= 2
-
-            self.decoder.append(DecoderBlock(in_channels, out_channels, bias, normalize))
-
-        if backbone_name:
-            if k == 1:
-                self.decoder.append(DecoderBlock(128, 64, bias, normalize, dropout, 64, 64))
-            elif k == 2:
-                self.decoder.append(DecoderBlock(192, 64, bias, normalize, dropout, 256, 128))
-
-        # out blocks
-        self.out = OutBlock(filters[0], filters[0], num_classes)
-
-        # initialize weights
+        # Initialize weights
         if init_weights:
-            init_targets = self.modules() if backbone_name else [self.center, self.decoder, self.out]
+            self._init_weights()
 
-            for module in init_targets:
-                for m in module.modules():
-                    if isinstance(m, nn.Conv2d):
-                        nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                    elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                        nn.init.constant_(m.weight, 1)
-                        nn.init.constant_(m.bias, 0)
+    def _init_weights(self) -> None:
+        for m in self.modules():
+            # Convolution layers
+            if self.backbone:
+                if not isinstance(m, (EncoderBlock)) and isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            else:
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+
+            # BatchNorm layers
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def _get_parameter_count(self) -> None:
+        # M <- 단위 사용
+        print(f"Total parameters: {sum(p.numel() for p in self.parameters() if p.requires_grad):,}")
 
     def forward(self, x: Tensor) -> Tensor:
-        x_out = []
-
-        # encoder input (with backbone)
-        if self.backbone_name:
-            x = self.encoder_input(x)
-            p = self.maxpool(x)
-            x_out.append(x)
-        # encoder input (without backbone)
+        # Encoder
+        if self.backbone:
+            e1 = self.e1(x)
+            e2 = self.e2(e1)
+            e3 = self.e3(e2)
+            e4 = self.e4(e3)
+            e5 = self.e5(e4)
         else:
-            p = x
+            e1, p1 = self.e1(x)
+            e2, p2 = self.e2(p1)
+            e3, p3 = self.e3(p2)
+            e4, p4 = self.e4(p3)
+            e5 = self.e5(p4)
 
-        # encoder blocks
-        for encoder in self.encoder:
-            if self.backbone_name:
-                p = encoder(p)
-                x_out.append(p)
-            else:
-                x, p = encoder(p)
-                x_out.append(x)
-            e_out = p
+        # Decoder
+        d1 = self.d1(e5, e4)
+        d2 = self.d2(d1, e3)
+        d3 = self.d3(d2, e2)
+        d4 = self.d4(d3, e1)
 
-        # center blocks
-        c = self.center(e_out)
-
-        # decoder blocks
-        d = self.maxpool(c)
-
-        for i, decoder in enumerate(self.decoder):
-            x = x_out[-1 - i]
-            if self.backbone_name is None:
-                x = self.maxpool(x)
-
-            d = decoder(d, x)
-
-        # out blocks
-        return self.out(d)
-
+        # Output
+        return self.out(d4)
