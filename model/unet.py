@@ -52,7 +52,7 @@ class UNet(nn.Module):
         self.decoder_conv_filters = UNET_CONFIGS['convolution'][self.backbone_depth]
         self.decoder_trans_filters = UNET_CONFIGS['transpose'][self.backbone_depth]
 
-        # Encoder layers
+        # Encoder layers (with backbone)
         if backbone:
             encoder_layers = list(resnet(backbone, pretrained, channels).children())
 
@@ -61,6 +61,13 @@ class UNet(nn.Module):
             self.e3 = encoder_layers[5]
             self.e4 = encoder_layers[6]
             self.e5 = encoder_layers[7]
+
+            # Freeze the backbone
+            if freeze_backbone:
+                for p in self.parameters():
+                    p.requires_grad = False
+
+        # Encoder layers (without backbone)
         else:
             self.e1 = EncoderBlock(channels, 64, bias, normalize, dropout)
             self.e2 = EncoderBlock(64, 128, bias, normalize, dropout)
@@ -98,9 +105,8 @@ class UNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def _get_parameter_count(self) -> None:
-        # M <- 단위 사용
-        print(f"Total parameters: {sum(p.numel() for p in self.parameters() if p.requires_grad):,}")
+    def _get_parameter_count(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
     def forward(self, x: Tensor) -> Tensor:
         # Encoder
@@ -115,6 +121,8 @@ class UNet(nn.Module):
             e2, p2 = self.e2(p1)
             e3, p3 = self.e3(p2)
             e4, p4 = self.e4(p3)
+
+            # Center layer
             e5 = self.e5(p4)
 
         # Decoder
@@ -125,3 +133,4 @@ class UNet(nn.Module):
 
         # Output
         return self.out(d4)
+

@@ -81,16 +81,20 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 ```bash
 UNet-Segmentation
-├── assets/
+├── assets/           # 
+│   ├── backbone.png
 │   └── unet.png
-├── model/
+├── model/            # 
 │   ├── modules.py
 │   ├── resnet.py
 │   ├── unet.py
-│   ├── unet++.py
-│   └── unet3+.py
-├── train/
+│   ├── unet2+.py
+│   ├── unet3+.py
+│   └── utils.py
+├── train/            # 
 │   └── trainer.py
-
+├── README.md         # 
+├── requirements.txt  # 
 
 ```
+

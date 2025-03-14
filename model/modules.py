@@ -9,7 +9,7 @@ class DoubleConv2d(nn.Module):
             self,
             in_channels: int,
             out_channels: int,
-            bias: bool = True,
+            bias: bool = False,
             normalize: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super(DoubleConv2d, self).__init__()
@@ -45,7 +45,6 @@ class EncoderBlock(nn.Module):
         x = self.conv(x)
         p = self.pool(x)
         p = self.drop(p)
-        
         return x, p
 
 
@@ -69,7 +68,6 @@ class DecoderBlock(nn.Module):
         x = self.trans(x1)
         x = self.conv(torch.cat([x, x2], dim=1))
         x = self.drop(x)
-
         return x
 
 
@@ -78,7 +76,8 @@ class OutputBlock(nn.Module):
             self,
             in_channels: int,
             num_classes: int,
-            backbone: str
+            backbone: str,
+            bias: bool = False
     ) -> None:
         super(OutputBlock, self).__init__()
         if backbone:
@@ -86,9 +85,9 @@ class OutputBlock(nn.Module):
 
             self.layers = nn.Sequential(
                 nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
-                nn.Conv2d(out_channels, num_classes, kernel_size=1)
+                nn.Conv2d(out_channels, num_classes, kernel_size=1, bias=bias)
             )
-        else: self.layers = nn.Conv2d(in_channels, num_classes, kernel_size=1)
+        else: self.layers = nn.Conv2d(in_channels, num_classes, kernel_size=1, bias=bias)
 
     def forward(self, x: Tensor) -> Tensor:
         return self.layers(x)
