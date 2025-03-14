@@ -52,7 +52,6 @@ class Bottleneck2Conv(nn.Module):
             out += self.downsample(x)
 
         out = self.relu(out)
-        
         return out
 
 
@@ -91,7 +90,6 @@ class Bottleneck3Conv(nn.Module):
             out += self.downsample(x)
 
         out = self.relu(out)
-        
         return out
 
 
@@ -116,7 +114,7 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        # Residual layers
+        # Residual layers: Bottleneck, out_channels, stride, bias, layer
         self.layer1 = self._make_layer(bottleneck, 64, 1, bias, layers[0])
         self.layer2 = self._make_layer(bottleneck, 128, 2, bias, layers[1])
         self.layer3 = self._make_layer(bottleneck, 256, 2, bias, layers[2])
@@ -157,7 +155,6 @@ class ResNet(nn.Module):
         self.in_channels = out_channels*expansion
         for _ in range(1, layer):
             layers.append(bottleneck(self.in_channels, out_channels, stride=1, bias=bias))
-
         return nn.Sequential(*layers)
     
     def _init_weights(self, zero_init_residual: bool) -> None:
@@ -189,7 +186,6 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = self.flatten(x)
         x = self.fc(x)
-
         return x
 
 
@@ -222,6 +218,5 @@ def resnet(
             resnet.load_state_dict(torch.load(pretrained))
         except Exception as e:
             raise RuntimeError(f'Failed to load pretrained weights: {e}')
-        
     return resnet
 

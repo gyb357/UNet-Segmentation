@@ -51,13 +51,13 @@ class EncoderBlock(nn.Module):
 class DecoderBlock(nn.Module):
     def __init__(
             self,
+            up_in_channels: int,
+            up_out_channels: int,
             in_channels: int,
             out_channels: int,
             bias: bool = False,
             normalize: Optional[Callable[..., nn.Module]] = None,
-            dropout: float = 0.0,
-            up_in_channels: Optional[int] = None,
-            up_out_channels: Optional[int] = None
+            dropout: float = 0.0
     ) -> None:
         super(DecoderBlock, self).__init__()
         self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2, bias=bias)
@@ -75,14 +75,13 @@ class OutputBlock(nn.Module):
     def __init__(
             self,
             in_channels: int,
+            out_channels: int,
             num_classes: int,
             backbone: str,
             bias: bool = False
     ) -> None:
         super(OutputBlock, self).__init__()
         if backbone:
-            out_channels = in_channels // 2
-
             self.layers = nn.Sequential(
                 nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
                 nn.Conv2d(out_channels, num_classes, kernel_size=1, bias=bias)
