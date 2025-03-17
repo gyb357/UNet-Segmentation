@@ -185,6 +185,9 @@ class ResNet(nn.Module):
                 elif isinstance(m, Bottleneck2Conv):
                     nn.init.constant_(m.bn2.weight, 0)
 
+    def _get_parameter_count(self) -> int:
+        return sum(p.numel() for p in self.parameters())
+
     def forward(self, x: Tensor) -> Tensor:
         # Initial layers
         x = self.conv1(x)
