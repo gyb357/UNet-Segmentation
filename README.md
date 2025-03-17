@@ -68,6 +68,7 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 | ResUNet101        | ResNet101 | 59.89M              |
 | ResUNet152        | ResNet152 | 75.54M              |
 
+
 *****
 
 

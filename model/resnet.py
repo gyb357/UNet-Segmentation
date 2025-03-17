@@ -94,6 +94,8 @@ class Bottleneck3Conv(nn.Module):
 
 
 class ResNet(nn.Module):
+    """ResNet model with bottleneck blocks."""
+
     def __init__(
             self,
             bottleneck: Type[Union[Bottleneck2Conv, Bottleneck3Conv]],
@@ -104,6 +106,17 @@ class ResNet(nn.Module):
             init_weights: bool = False,
             zero_init_residual: bool = False
     ) -> None:
+        """
+        Args:
+            bottleneck: Type of bottleneck block to use
+            layers: Number of layers in each block
+            channels: Number of channels in input images (1 for grayscale, 3 for RGB)
+            num_classes: Number of output classes
+            bias: Whether to use bias in convolutional layers
+            init_weights: Whether to initialize weights
+            zero_init_residual: Whether to zero-initialize the last BN in each residual block
+        """
+        
         super(ResNet, self).__init__()
         # Attributes
         self.in_channels = 64
