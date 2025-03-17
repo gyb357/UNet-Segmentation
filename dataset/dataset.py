@@ -1,17 +1,17 @@
-import os
 import logging
+import os
 import numpy as np
-import random
 import torch.nn.functional as F
+import random
 import torch
-from typing import Tuple, Optional, Dict, List
+from typing import Tuple, Optional, List, Dict
 from PIL import Image, ImageDraw
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch import Tensor
 
 
 class MaskDatasetGenerator():
-    """Generate a mask image with the Yolo v8 dataset format as input."""
+    """Generate a mask image with the Yolo dataset format as input."""
 
     def __init__(
             self,
@@ -22,8 +22,6 @@ class MaskDatasetGenerator():
             mask_fill: int = 255
     ) -> None:
         """
-        Initialize the MaskDatasetGenerator.
-        
         Args:
             label_path: Path to the directory containing label files
             mask_path: Path where mask images will be saved
@@ -31,9 +29,12 @@ class MaskDatasetGenerator():
             mask_extension: File extension for saved masks (e.g., '.png')
             mask_fill: Pixel value for the foreground (default: 255)
         """
-
+        
         # Set up logging
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'
+        )
         # Make directory
         os.makedirs(mask_path, exist_ok=True)
 
@@ -45,84 +46,63 @@ class MaskDatasetGenerator():
         self.mask_extension = mask_extension
         self.mask_fill = mask_fill
 
-
     def __call__(self) -> None:
-        label_files = [f for f in os.listdir(self.label_path) if f.endswith('.txt')]
-        
-        if not label_files:
-            self.logger.warning(f"No label files found in {self.label_path}")
-            return
-            
-        self.logger.info(f"Found {len(label_files)} label files. Starting mask generation...")
-        
+        label_files = [file for file in os.listdir(self.label_path) if file.endswith('.txt')]
+
         for i, label in enumerate(label_files):
             label_file_path = os.path.join(self.label_path, label)
-            
-            try:
-                with open(label_file_path, 'r') as file:
-                    coordinates = [line.strip().split(' ') for line in file.readlines()]
 
-                zeros = np.zeros(self.mask_size, dtype=np.uint8)
-                mask = Image.fromarray(zeros, mode='L')
-                draw = ImageDraw.Draw(mask)
+            with open(label_file_path, 'r') as file:
+                coordinates = [line.strip().split(' ') for line in file.readlines()]
 
-                for coords in coordinates:
-                    # Skip empty lines
-                    if not coords:
-                        continue
-                        
-                    try:
-                        # Extract polygon points
-                        polygon = [
-                            (
-                                int(float(coords[i])*self.mask_size[0]),
-                                int(float(coords[i + 1])*self.mask_size[1])
-                            )
-                            for i in range(1, len(coords), 2)
-                        ]
-                        
-                        # Check if polygon has enough points
-                        if len(polygon) < 3:
-                            self.logger.warning(f"Skipping invalid polygon with {len(polygon)} points in {label}")
-                            continue
-                            
-                        draw.polygon(polygon, fill=self.mask_fill)
-                    except (IndexError, ValueError) as e:
-                        self.logger.error(f"Error processing coordinates in {label}: {e}")
-                        continue
+            zeros = np.zeros(self.mask_size, dtype=np.uint8)
+            mask = Image.fromarray(zeros, mode='L')
+            draw = ImageDraw.Draw(mask)
 
-                save_path = os.path.join(self.mask_path, label.replace('.txt', self.mask_extension))
-                mask.save(save_path)
-                
-                if (i + 1) % 100 == 0:
-                    self.logger.info(f"Processed {i + 1}/{len(label_files)} mask files")
-                    
-            except Exception as e:
-                self.logger.error(f"Error processing {label}: {e}")
-                
+            for coords in coordinates:
+                if not coords:
+                    continue
+
+                try:
+                    polygon = [
+                        (
+                            int(float(coords[i])*self.mask_size[0]),
+                            int(float(coords[i + 1])*self.mask_size[1])
+                        )
+                        for i in range(1, len(coords), 2)
+                    ]
+                    draw.polygon(polygon, fill=self.mask_fill)
+                except (IndexError, ValueError) as e:
+                    self.logger.error(f"Error processing coordinates in {label}: {e}")
+                    continue
+
+            save_path = os.path.join(self.mask_path, label.replace('.txt', '') + self.mask_extension)
+            mask.save(save_path)
+
+            if (i + 1)%100 == 0:
+                self.logger.info(f"Processed {i + 1}/{len(label_files)} mask files")
+
         self.logger.info(f"Mask generation completed. {len(label_files)} masks generated.")
 
 
 class Augmentation():
     """Class for applying various image augmentations to image and mask pairs."""
-    
+
     def __init__(
             self,
             channels: int,
             resize: Optional[Tuple[int, int]] = None,
             hflip: bool = False,
             vflip: bool = False,
-            rotate: float = 0,
-            saturation: float = 0,
-            brightness: float = 0,
-            factor: float = 1,
+            rotate: float = 0.0,
+            saturation: float = 0.0,
+            brightness: float = 0.0,
+            factor: float = 1.0,
             p: float = 0.5
     ) -> None:
         """
-        Initialize augmentation parameters.
-        
         Args:
-            channels: Number of channels for the output image (1 for grayscale, 3 for RGB)
+            channels: Number of channels in input images (1 for grayscale, 3 for RGB)
             resize: Optional tuple for resizing (width, height)
             hflip: Whether to apply horizontal flip
             vflip: Whether to apply vertical flip
@@ -144,15 +124,11 @@ class Augmentation():
         self.factor = factor
         self.p = p
 
-    def __call__(self, image: Image.Image, mask: Image.Image) -> Tuple[Image.Image, Image.Image]:
-        """
-        Apply augmentations to an image-mask pair.
-        
-        Args:
-            image: Input image
-            mask: Corresponding segmentation mask
-        """
-
+    def __call__(
+            self,
+            image: Image.Image,
+            mask: Image.Image
+    ) -> Tuple[Image.Image, Image.Image]:
         # Convert to grayscale if needed
         if self.channels == 1:
             image = F.to_grayscale(image, 1)
@@ -161,10 +137,6 @@ class Augmentation():
         mask = mask.convert('1')
 
         # Apply geometric transformations
-        if self.resize is not None:
-            image = F.resize(image, self.resize)
-            mask = F.resize(mask, self.resize, interpolation=Image.NEAREST)
-            
         if self.resize is not None:
             image = F.resize(image, self.resize)
             mask = F.resize(image, self.resize)
@@ -184,13 +156,12 @@ class Augmentation():
             image = F.adjust_saturation(image, random.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
         if self.brightness > 0:
             image = F.adjust_brightness(image, random.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
-            
         return image, mask
 
 
-class SegmentationDataLoader(Dataset):
+class SegmentationDataset(Dataset):
     """Dataset class for loading image-mask pairs for segmentation tasks."""
-    
+
     def __init__(
             self,
             image_path: str,
@@ -200,8 +171,6 @@ class SegmentationDataLoader(Dataset):
             augmentation: Optional[Augmentation] = None
     ) -> None:
         """
-        Initialize the segmentation data loader.
-        
         Args:
             image_path: Directory containing input images
             mask_path: Directory containing corresponding mask images
@@ -216,62 +185,42 @@ class SegmentationDataLoader(Dataset):
         self.extension = extension
         self.num_images = num_images
         self.augmentation = augmentation
-        
-        # Validate paths
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image path does not exist: {image_path}")
-        if not os.path.exists(mask_path):
-            raise FileNotFoundError(f"Mask path does not exist: {mask_path}")
-            
+
         # Get file paths
-        self.paths = self._get_matched_paths()
-        
-        if len(self.paths['image']) == 0:
-            raise ValueError(f"No matching image-mask pairs found with extension {extension}")
+        self.path = self._get_paths(self._get_files(image_path), self._get_files(mask_path))
+        print(f"Found {len(self.path['image'])} image-mask pairs")
 
-    def _get_matched_paths(self) -> Dict[str, List[str]]:
-        """Get matched image and mask file paths."""
-
-        image_files = set(self._get_files(self.image_path))
-        mask_files = set(self._get_files(self.mask_path))
-        
-        # Find common files
-        common_files = image_files.intersection(mask_files)
-        
-        paths = {
+    def _get_paths(self, images: List[str], masks: List[str]) -> Dict[str, List[str]]:
+        path = {
             'image': [],
             'mask': []
         }
-        
+
+        # Find common files
+        common_files = set(images).intersection(masks)
+
+        # Append common files to paths
         for file in common_files:
-            paths['image'].append(os.path.join(self.image_path, file))
-            paths['mask'].append(os.path.join(self.mask_path, file))
-            
-        return paths
+            path['image'].append(os.path.join(self.image_path, file))
+            path['mask'].append(os.path.join(self.mask_path, file))
+        return path
     
     def _get_files(self, path: str) -> List[str]:
-        """
-        Get list of files with the specified extension in a directory.
-        
-        Args:
-            path: Directory path
-        """
-
-        return [f for f in os.listdir(path) if f.endswith(self.extension)]
+        return [file for file in os.listdir(path) if file.endswith(self.extension)]
     
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor]:
         # Load images
         try:
-            image = Image.open(self.paths['image'][idx]).convert('RGB')
-            mask = Image.open(self.paths['mask'][idx]).convert('L')
+            image = Image.open(self.path['image'][idx])
+            mask = Image.open(self.path['mask'][idx])
         except Exception as e:
             raise IOError(f"Error loading images at index {idx}: {e}")
-
-        # Apply augmentations if specified
-        if self.augmentation is not None:
+        
+        # Apply augmentations
+        if self.augmentation:
             image, mask = self.augmentation(image, mask)
 
-        # Convert to tensors if not already
+        # Convert to tensors
         if not isinstance(image, Tensor):
             image = F.to_tensor(image)
         if not isinstance(mask, Tensor):
@@ -279,15 +228,16 @@ class SegmentationDataLoader(Dataset):
         return image, mask
     
     def __len__(self) -> int:
-        available_images = len(self.paths['image'])
-        if self.num_images > 0:
-            return min(self.num_images, available_images)
-        return available_images
+        image_len = len(self.path['image'])
+
+        if self.num_images > 0 and self.num_images <= image_len:
+            return self.num_images
+        return image_len
 
 
-class SegmentationDataset():
-    """Class for managing train/val/test splits for segmentation datasets."""
-    
+class SegmentationDataLoader(DataLoader):
+    """DataLoader class for segmentation datasets and managing train/val/test splits."""
+
     default_split: Dict[str, float] = {
         'train': 0.8,
         'val': 0.1,
@@ -296,18 +246,16 @@ class SegmentationDataset():
 
     def __init__(
             self,
-            dataset_loader: SegmentationDataLoader,
+            dataset: SegmentationDataset,
             dataset_split: Optional[Dict[str, float]] = None,
             batch_size: int = 8,
             shuffle: bool = True,
-            num_workers: int = 4,
-            pin_memory: bool = True
+            num_workers: int = 0,
+            pin_memory: bool = False
     ) -> None:
         """
-        Initialize the segmentation dataset manager.
-        
         Args:
-            dataset_loader: SegmentationDataLoader instance
+            dataset: SegmentationDataset instance
             dataset_split: Dictionary with split ratios (train, val, test)
             batch_size: Batch size for dataloaders
             shuffle: Whether to shuffle the data
@@ -316,52 +264,29 @@ class SegmentationDataset():
         """
 
         # Attributes
-        self.dataset_loader = dataset_loader
+        self.dataset = dataset
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        
+
         # Initialize dataset split with defaults if not provided
-        if dataset_split is None:
-            self.dataset_split = self.default_split.copy()
-        else:
-            self.dataset_split = dataset_split.copy()
+        self.dataset_split = dataset_split or self.default_split
 
-            for key, value in self.default_split.items():
-                if key not in self.dataset_split:
-                    self.dataset_split[key] = value
-                    
-        # Normalize splits to sum to 1.0
-        total = sum(self.dataset_split.values())
-
-        if abs(total - 1.0) > 0.001:
-            for key in self.dataset_split:
-                self.dataset_split[key] /= total
-
-    def get_split_lengths(self) -> Tuple[int, int, int]:
-        """Calculate lengths for train/val/test splits."""
-
-        dataset_len = len(self.dataset_loader)
+    def _get_length(self) -> Tuple[int, int, int]:
+        dataset_len = len(self.dataset)
         train = int(self.dataset_split['train']*dataset_len)
         val = int(self.dataset_split['val']*dataset_len)
         test = dataset_len - train - val
         return train, val, test
     
-    def get_dataloaders(self, seed: int = 42) -> Dict[str, DataLoader]:
-        """
-        Create train/val/test dataloaders.
-        
-        Args:
-            seed: Random seed for reproducible splits
-        """
+    def get_loader(self, seed: int = 42) -> Dict[str, DataLoader]:
+        generator = torch.Generator().manual_seed(seed)
 
-        # Generate random seed
-        seed = torch.Generator().manual_seed(seed)
         # Get split lengths
-        train_len, val_len, test_len = self.get_split_lengths()
+        train_len, val_len, test_len = self._get_length()
         # Split the dataset
-        splits = random_split(self.dataset_loader, [train_len, val_len, test_len], seed)
+        splits = random_split(self.dataset, [train_len, val_len, test_len], generator)
 
         # Create dataloaders
         loaders = {}
@@ -377,7 +302,6 @@ class SegmentationDataset():
                 drop_last=(phase == 'train')                 # Only drop last incomplete batch during training
             )
 
-        # Log dataset split
-        logging.info(f"Dataset split: train={train_len}, val={val_len}, test={test_len} samples")
+        print(f"Dataset split: train={train_len}, val={val_len}, test={test_len} samples")
         return loaders
 

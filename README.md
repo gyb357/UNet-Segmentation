@@ -93,6 +93,9 @@ UNet-Segmentation
 ├── assets/           # 
 │   └── unet.png
 ├── dataset/          # 
+│   ├── image/        # 
+│   ├── label/        # 
+│   ├── mask/         # 
 │   └── dataset.py
 ├── model/            # 
 │   ├── modules.py
@@ -103,9 +106,8 @@ UNet-Segmentation
 │   └── utils.py
 ├── train/            # 
 │   ├── loss.py
-│   └── trainer.py
+│   └── train.py
 ├── README.md         # 
 └── requirements.txt  # 
-
 ```
 

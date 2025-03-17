@@ -224,6 +224,8 @@ def resnet(
         zero_init_residual: bool = False,
 ) -> ResNet:
     """
+    Create a ResNet model.
+    
     Args:
         name: ResNet model name (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
         pretrained: Optional path to pretrained weights
