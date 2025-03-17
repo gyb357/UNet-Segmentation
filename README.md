@@ -92,6 +92,8 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 UNet-Segmentation
 ├── assets/           # 
 │   └── unet.png
+├── config/           # 
+│   └── config.yaml
 ├── dataset/          # 
 │   ├── image/        # 
 │   ├── label/        # 
@@ -107,6 +109,7 @@ UNet-Segmentation
 ├── train/            # 
 │   ├── loss.py
 │   └── train.py
+├── main.py           # 
 ├── README.md         # 
 └── requirements.txt  # 
 ```
