@@ -75,8 +75,28 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 # 🔨Getting Started
 
 ## 1. Check the Running Environment
+Before proceeding, ensure that your system has a compatible GPU and CUDA installed. You can check this by running:
+```bash
+nvidia-smi
+```
 
 ## 2. Installation and Dependencies
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/gyb357/UNet-Segmentation
+cd UNet-Segmentation
+pip install -r requirements.txt
+```
+
+If your GPU is not recognized or CUDA is not properly set up, you may need to install the appropriate version of PyTorch. You can find the correct `.whl` file from the official [PyTorch website](https://pytorch.org/get-started/previous-versions/).
+
+For example, if you are using CUDA 12.1, install PyTorch with:
+
+```bash
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
 
 ## 3. Downloading Pre-Trained ResNet Weights
 
@@ -90,27 +110,27 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 ```bash
 UNet-Segmentation
-├── assets/           # 
+├── assets/           # Contains images and other assets for documentation
 │   └── unet.png
-├── config/           # 
+├── config/           # Stores configuration files
 │   └── config.yaml
-├── dataset/          # 
-│   ├── image/        # 
-│   ├── label/        # 
-│   ├── mask/         # 
+├── dataset/          # Handles dataset-related operations
+│   ├── image/        # Stores raw images for training
+│   ├── label/        # Stores ground truth labels
+│   ├── mask/         # Stores segmentation masks
 │   └── dataset.py
-├── model/            # 
+├── model/            # Contains model architectures and utilities
 │   ├── modules.py
 │   ├── resnet.py
 │   ├── unet.py
 │   ├── unet2+.py
 │   ├── unet3+.py
 │   └── utils.py
-├── train/            # 
+├── train/            # Training-related scripts
 │   ├── loss.py
 │   └── train.py
-├── main.py           # 
-├── README.md         # 
-└── requirements.txt  # 
+├── main.py           # Main entry point for running experiments
+├── README.md         # Project documentation (this file)
+└── requirements.txt  # Dependencies required to run the project
 ```
 
