@@ -5,6 +5,8 @@ from torch import Tensor
 
 
 class DoubleConv2d(nn.Module):
+    """Double convolutional block with normalization and ReLU activation."""
+
     def __init__(
             self,
             in_channels: int,
@@ -12,6 +14,23 @@ class DoubleConv2d(nn.Module):
             bias: bool = False,
             normalize: Optional[Callable[..., nn.Module]] = None
     ) -> None:
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to use bias in convolutional layers
+            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
+
+        Structure
+        ----------
+         | Conv2d (3x3)
+         | Normalization
+         | ReLU
+         | Conv2d (3x3)
+         | Normalization
+         | ReLU
+        """
+
         super(DoubleConv2d, self).__init__()
         self.normalize = normalize or nn.BatchNorm2d
         self.layers = nn.Sequential(
@@ -28,6 +47,8 @@ class DoubleConv2d(nn.Module):
 
 
 class EncoderBlock(nn.Module):
+    """Encoder block with double convolutional layer and max pooling."""
+
     def __init__(
             self,
             in_channels: int,
@@ -36,6 +57,21 @@ class EncoderBlock(nn.Module):
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0
     ) -> None:
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to use bias in convolutional layers
+            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout: Dropout probability
+
+        Structure
+        ----------
+         | DoubleConv2d
+         | MaxPool2d (2x2)
+         | Dropout
+        """
+
         super(EncoderBlock, self).__init__()
         self.conv = DoubleConv2d(in_channels, out_channels, bias, normalize)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -49,6 +85,11 @@ class EncoderBlock(nn.Module):
 
 
 class DecoderBlock(nn.Module):
+    """
+    Decoder block with transposed convolutional layer and double convolutional layer.
+    Concatenates the input from the encoder block.
+    """
+
     def __init__(
             self,
             up_in_channels: int,
@@ -59,6 +100,23 @@ class DecoderBlock(nn.Module):
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0
     ) -> None:
+        """
+        Args:
+            up_in_channels: Number of input channels for transposed convolutional layer
+            up_out_channels: Number of output channels for transposed convolutional layer
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            bias: Whether to use bias in convolutional layers
+            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout: Dropout probability
+
+        Structure
+        ----------
+         | ConvTranspose2d (2x2)
+         | DoubleConv2d
+         | Dropout
+        """
+
         super(DecoderBlock, self).__init__()
         self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2, bias=bias)
         self.conv = DoubleConv2d(in_channels, out_channels, bias, normalize)
@@ -72,14 +130,33 @@ class DecoderBlock(nn.Module):
 
 
 class OutputBlock(nn.Module):
+    """Output block with transposed convolutional layer and convolutional layer."""
+
     def __init__(
             self,
             in_channels: int,
             out_channels: int,
             num_classes: int,
-            backbone: str,
+            backbone: bool,
             bias: bool = False
     ) -> None:
+        """
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            num_classes: Number of output classes
+            backbone: Whether to use as a backbone
+            bias: Whether to use bias in convolutional layers
+
+        Structure
+        ----------
+         | ConvTranspose2d (2x2)
+         | Conv2d (1x1)
+
+        without backbone:
+         | Conv2d (1x1)
+        """
+
         super(OutputBlock, self).__init__()
         if backbone:
             self.layers = nn.Sequential(

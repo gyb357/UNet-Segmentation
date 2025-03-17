@@ -173,16 +173,19 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn2.weight, 0)
 
     def forward(self, x: Tensor) -> Tensor:
+        # Initial layers
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
 
+        # Residual layers
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
 
+        # Pooling and classifier
         x = self.avgpool(x)
         x = self.flatten(x)
         x = self.fc(x)
@@ -207,6 +210,17 @@ def resnet(
         init_weights: bool = False,
         zero_init_residual: bool = False,
 ) -> ResNet:
+    """
+    Args:
+        name: ResNet model name (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
+        pretrained: Optional path to pretrained weights
+        channels: Number of channels in input images (1 for grayscale, 3 for RGB)
+        num_classes: Number of output classes
+        bias: Whether to use bias in convolutional layers
+        init_weights: Whether to initialize weights
+        zero_init_residual: Whether to zero-initialize the last BN in each residual block
+    """
+
     if name not in RESNET_CONFIGS:
         raise ValueError(f'Invalid ResNet name {name}. Available options are {list(RESNET_CONFIGS.keys())}.')
     

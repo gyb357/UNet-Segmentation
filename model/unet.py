@@ -29,17 +29,6 @@ class UNet(nn.Module):
     
     This model can use either a ResNet backbone as encoder or a standard UNet encoder.
     The decoder is always a standard UNet decoder with skip connections.
-    
-    Args:
-        channels: Number of input channels (typically 3 for RGB images)
-        num_classes: Number of output classes for segmentation
-        backbone: Optional ResNet backbone ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
-        pretrained: Whether to use pretrained weights for backbone
-        freeze_backbone: Whether to freeze backbone weights
-        bias: Whether to use bias in convolutions
-        normalize: Normalization layer to use (default: BatchNorm2d)
-        dropout: Dropout rate
-        init_weights: Whether to initialize weights
     """
     
     def __init__(
@@ -54,17 +43,29 @@ class UNet(nn.Module):
             dropout: float = 0.0,
             init_weights: bool = False,
     ) -> None:
+        """
+        Args:
+            channels: Number of channels in input images (1 for grayscale, 3 for RGB)
+            num_classes: Number of output classes
+            backbone: ResNet model name (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
+            pretrained: Optional path to pretrained weights
+            freeze_backbone: Whether to freeze the backbone
+            bias: Whether to use bias in convolutional layers
+            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout: Dropout probability
+            init_weights: Whether to initialize weights
+        """
+
         super(UNet, self).__init__()
         # Attributes
         self.backbone = backbone
 
-        # Depth of the backbone
+        # Get configuration based on backbone depth
         self.backbone_depth = ternary_op_elif(
             backbone in ['resnet18', 'resnet34'], 'shallow',
             backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
             'default'
         )
-        # Get configuration based on backbone depth
         config = UNET_CONFIGS[self.backbone_depth]
         self.decoder_conv_filters = config['conv_filters']
         self.decoder_trans_filters = config['trans_filters']

@@ -1,13 +1,13 @@
 # Table of Contents
+
 1. [Introduction](#Introduction)
-     * Advanced UNet Implementations with ResNet Backbone
+     * UNet Implementations with ResNet Backbone
      * Purpose of the Project
      
 2. [Architecture Overview](#Architecture-Overview)
      * UNet
      * UNet++
      * UNet3+
-     * ResNet
 
 3. [Model Comparison](#Model-Comparison)
 
@@ -24,9 +24,7 @@
 
 # 📑Introduction
 
-
-
-## Advanced UNet Implementations with ResNet Backbone
+## UNet Implementations with ResNet Backbone
 This repository implements multiple UNet-based architectures with ResNet backbones using PyTorch. The models leverage pretrained weights from ResNet to enhance feature extraction in the encoder parts of these architectures. The implementation includes UNet, UNet++, and UNet3+, all of which support ResNet backbones for improved performance on biomedical image segmentation tasks.
 
 ## Purpose of the Project
@@ -50,7 +48,10 @@ UNet++ redesigns the skip connections with a nested dense structure, effectively
 UNet3+ takes a full-scale approach by introducing extensive skip connections that link each decoder stage with all encoder stages, rather than just the corresponding level. This multi-scale feature fusion integrates high-level semantic information with low-level spatial details at every decoder level, enhancing both fine-grained segmentation and global context awareness.
 
  > [!Note]
- > For more information, see the corresponding [arxiv paper](https://arxiv.org/abs/1505.04597).
+ > For more information, see the corresponding arxiv paper.
+ > - [UNet arxiv paper](https://arxiv.org/abs/1505.04597)
+ > - [UNet++ arxiv paper](https://arxiv.org/abs/1807.10165)
+ > - [UNet3+ arxiv paper](https://arxiv.org/abs/2004.08790)
 
 
 *****
@@ -58,7 +59,14 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 # 📋Model Comparison
 
-
+| Model Architecture | Backbone  | Number of Parameters |
+|--------------------|-----------|----------------------|
+| UNet              | -         | 31.04M              |
+| ResUNet18         | ResNet18  | 20.78M              |
+| ResUNet34         | ResNet34  | 30.89M              |
+| ResUNet50         | ResNet50  | 40.90M              |
+| ResUNet101        | ResNet101 | 59.89M              |
+| ResUNet152        | ResNet152 | 75.54M              |
 
 *****
 
@@ -82,8 +90,9 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 ```bash
 UNet-Segmentation
 ├── assets/           # 
-│   ├── backbone.png
 │   └── unet.png
+├── dataset/          # 
+│   └── dataset.py
 ├── model/            # 
 │   ├── modules.py
 │   ├── resnet.py
@@ -92,9 +101,10 @@ UNet-Segmentation
 │   ├── unet3+.py
 │   └── utils.py
 ├── train/            # 
+│   ├── loss.py
 │   └── trainer.py
 ├── README.md         # 
-├── requirements.txt  # 
+└── requirements.txt  # 
 
 ```
 
