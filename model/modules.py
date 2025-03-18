@@ -5,7 +5,18 @@ from torch import Tensor
 
 
 class DoubleConv2d(nn.Module):
-    """Double convolutional block with normalization and ReLU activation."""
+    """
+    Double convolutional block with normalization and ReLU activation.
+    
+    Structure
+    ---------
+     | ↓ Conv2d (3x3)
+     | ↓ Normalization
+     | ↓ ReLU
+     | ↓ Conv2d (3x3)
+     | ↓ Normalization
+     | ↓ ReLU
+    """
 
     def __init__(
             self,
@@ -16,19 +27,10 @@ class DoubleConv2d(nn.Module):
     ) -> None:
         """
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            bias: Whether to use bias in convolutional layers
-            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
-
-        Structure
-        ----------
-         | Conv2d (3x3)
-         | Normalization
-         | ReLU
-         | Conv2d (3x3)
-         | Normalization
-         | ReLU
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
         """
 
         super(DoubleConv2d, self).__init__()
@@ -47,7 +49,15 @@ class DoubleConv2d(nn.Module):
 
 
 class EncoderBlock(nn.Module):
-    """Encoder block with double convolutional layer and max pooling."""
+    """
+    Encoder block with double convolutional layer and max pooling.
+    
+    Structure
+    ---------
+     | ↓ DoubleConv2d
+     | ↓ MaxPool2d (2x2)
+     | ↓ Dropout
+    """
 
     def __init__(
             self,
@@ -59,17 +69,11 @@ class EncoderBlock(nn.Module):
     ) -> None:
         """
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            bias: Whether to use bias in convolutional layers
-            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout: Dropout probability
-
-        Structure
-        ----------
-         | DoubleConv2d
-         | MaxPool2d (2x2)
-         | Dropout
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout (float): Dropout probability
         """
 
         super(EncoderBlock, self).__init__()
@@ -88,6 +92,12 @@ class DecoderBlock(nn.Module):
     """
     Decoder block with transposed convolutional layer and double convolutional layer.
     Concatenates the input from the encoder block.
+
+    Structure
+    ---------
+     | ↓ ConvTranspose2d (2x2)
+     | ↓ DoubleConv2d
+     | ↓ Dropout
     """
 
     def __init__(
@@ -102,19 +112,13 @@ class DecoderBlock(nn.Module):
     ) -> None:
         """
         Args:
-            up_in_channels: Number of input channels for transposed convolutional layer
-            up_out_channels: Number of output channels for transposed convolutional layer
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            bias: Whether to use bias in convolutional layers
-            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout: Dropout probability
-
-        Structure
-        ----------
-         | ConvTranspose2d (2x2)
-         | DoubleConv2d
-         | Dropout
+            up_in_channels (int): Number of input channels for transposed convolutional layer
+            up_out_channels (int): Number of output channels for transposed convolutional layer
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout (float): Dropout probability
         """
 
         super(DecoderBlock, self).__init__()
@@ -130,31 +134,35 @@ class DecoderBlock(nn.Module):
 
 
 class OutputBlock(nn.Module):
-    """Output block with transposed convolutional layer and convolutional layer."""
+    """
+    Output block with transposed convolutional layer and convolutional layer.
+    If backbone is not provided, the block only contains a convolutional layer.
+    
+    Structure
+    ---------
+     | ↓ ConvTranspose2d (2x2)
+     | ↓ Conv2d (1x1)
+    (with backbone)
+
+     | ↓ Conv2d (1x1)
+    (without backbone)
+    """
 
     def __init__(
             self,
             in_channels: int,
             out_channels: int,
             num_classes: int,
-            backbone: bool,
+            backbone: Optional[str] = None,
             bias: bool = False
     ) -> None:
         """
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            num_classes: Number of output classes
-            backbone: Whether to use as a backbone
-            bias: Whether to use bias in convolutional layers
-
-        Structure
-        ----------
-         | ConvTranspose2d (2x2)
-         | Conv2d (1x1)
-
-        without backbone:
-         | Conv2d (1x1)
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            num_classes (int): Number of output classes
+            backbone (str): Whether to use as a backbone
+            bias (bool): Whether to use bias in convolutional layers
         """
 
         super(OutputBlock, self).__init__()

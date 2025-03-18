@@ -26,9 +26,11 @@ UNET_CONFIGS = {
 class UNet(nn.Module):
     """
     UNet implementation for image segmentation.
-    
     This model can use either a ResNet backbone as encoder or a standard UNet encoder.
-    The decoder is always a standard UNet decoder with skip connections.
+
+    Structure
+    ---------
+    https://arxiv.org/abs/1505.04597
     """
     
     def __init__(
@@ -45,15 +47,15 @@ class UNet(nn.Module):
     ) -> None:
         """
         Args:
-            channels: Number of channels in input images (1 for grayscale, 3 for RGB)
-            num_classes: Number of output classes
-            backbone: ResNet model name (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
-            pretrained: Optional path to pretrained weights
-            freeze_backbone: Whether to freeze the backbone
-            bias: Whether to use bias in convolutional layers
-            normalize: Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout: Dropout probability
-            init_weights: Whether to initialize weights
+            channels (int): Number of input channels
+            num_classes (int): Number of output classes
+            backbone (str): Backbone architecture for encoder
+            pretrained (str): Pretrained model path
+            freeze_backbone (bool): Whether to freeze backbone weights
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout (float): Dropout probability
+            init_weights (bool): Whether to initialize weights
         """
 
         super(UNet, self).__init__()
@@ -109,30 +111,27 @@ class UNet(nn.Module):
             self._init_weights()
 
     def _init_weights(self) -> None:
-        # Identify encoder modules to skip if using backbone
-        encoder_modules = set()
         if self.backbone:
+            # If backbone is provided, initialize only the decoder layers
+            encoder_modules = set()
             encoder_layers = [self.e1, self.e2, self.e3, self.e4, self.e5]
             for layer in encoder_layers:
                 encoder_modules.update(layer.modules())
 
-        # Initialize all modules except those in encoder_modules
-        for m in self.modules():
-            if self.backbone and m in encoder_modules:
-                continue
-                
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
-        # Without backbone
+            for m in self.modules():
+                if m in encoder_modules:
+                    continue
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
         else:
+            # If backbone is not provided, initialize all layers
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
                     nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                if isinstance(m, nn.BatchNorm2d):
+                elif isinstance(m, nn.BatchNorm2d):
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)
 

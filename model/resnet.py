@@ -10,6 +10,16 @@ def conv1x1_layer(
         stride: int = 1,
         bias: bool = False
 ) -> nn.Conv2d:
+    """
+    1x1 convolutional layer.
+
+    Args:
+        in_channels (int): Number of input channels
+        out_channels (int): Number of output channels
+        stride (int): Stride of the convolution
+        bias (bool): Whether to use bias in convolutional layers
+    """
+
     return nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=bias)
 
 
@@ -19,10 +29,34 @@ def conv3x3_layer(
         stride: int = 1,
         bias: bool = False
 ) -> nn.Conv2d:
+    """
+    3x3 convolutional layer.
+    
+    Args:
+        in_channels (int): Number of input channels
+        out_channels (int): Number of output channels
+        stride (int): Stride of the convolution
+        bias (bool): Whether to use bias in convolutional layers
+    """
+
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=bias)
 
 
 class Bottleneck2Conv(nn.Module):
+    """
+    Bottleneck block with two convolutional (3x3, 3x3) layers.
+    
+    Structure
+    ---------
+     | ↓ conv3x3_layer
+     | ↓ BatchNorm2d
+     | ↓ ReLU
+     | ↓ conv3x3_layer
+     | ↓ BatchNorm2d
+     | ↓ Downsample (optional)
+     | ↓ ReLU
+    """
+
     expansion: int = 1
 
     def __init__(
@@ -33,6 +67,15 @@ class Bottleneck2Conv(nn.Module):
             bias: bool = False,
             downsample: Optional[Callable[..., nn.Module]] = None
     ) -> None:
+        """
+        Args:
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            stride (int): Stride of the convolution
+            bias (bool): Whether to use bias in convolutional layers
+            downsample (nn.Module): Downsample layer
+        """
+
         super(Bottleneck2Conv, self).__init__()
         self.conv1 = conv3x3_layer(in_channels, out_channels, stride, bias)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -48,6 +91,7 @@ class Bottleneck2Conv(nn.Module):
         out = self.conv2(out)
         out = self.bn2(out)
 
+        # Apply downsample layer if available
         if self.downsample is not None:
             out += self.downsample(x)
 
@@ -56,6 +100,23 @@ class Bottleneck2Conv(nn.Module):
 
 
 class Bottleneck3Conv(nn.Module):
+    """
+    Bottleneck block with three convolutional (1x1, 3x3, 1x1) layers.
+
+    Structure
+    ---------
+        | ↓ conv1x1_layer
+        | ↓ BatchNorm2d
+        | ↓ ReLU
+        | ↓ conv3x3_layer
+        | ↓ BatchNorm2d
+        | ↓ ReLU
+        | ↓ conv1x1_layer
+        | ↓ BatchNorm2d
+        | ↓ Downsample (optional)
+        | ↓ ReLU
+    """
+
     expansion: int = 4
 
     def __init__(
@@ -66,6 +127,15 @@ class Bottleneck3Conv(nn.Module):
             bias: bool = False,
             downsample: Optional[Callable[..., nn.Module]] = None
     ) -> None:
+        """
+        Args:
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            stride (int): Stride of the convolution
+            bias (bool): Whether to use bias in convolutional layers
+            downsample (nn.Module): Downsample layer
+        """
+
         super(Bottleneck3Conv, self).__init__()
         self.conv1 = conv1x1_layer(in_channels, out_channels, bias=bias)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -86,6 +156,7 @@ class Bottleneck3Conv(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
 
+        # Apply downsample layer if available
         if self.downsample is not None:
             out += self.downsample(x)
 
@@ -94,7 +165,13 @@ class Bottleneck3Conv(nn.Module):
 
 
 class ResNet(nn.Module):
-    """ResNet model with bottleneck blocks."""
+    """
+    ResNet model with bottleneck blocks.
+    
+    Structure
+    ---------
+    https://arxiv.org/abs/1512.03385
+    """
 
     def __init__(
             self,
@@ -108,13 +185,13 @@ class ResNet(nn.Module):
     ) -> None:
         """
         Args:
-            bottleneck: Type of bottleneck block to use
-            layers: Number of layers in each block
-            channels: Number of channels in input images (1 for grayscale, 3 for RGB)
-            num_classes: Number of output classes
-            bias: Whether to use bias in convolutional layers
-            init_weights: Whether to initialize weights
-            zero_init_residual: Whether to zero-initialize the last BN in each residual block
+            bottleneck (Bottleneck2Conv or Bottleneck3Conv): Bottleneck block type
+            layers (list): Number of layers in each block
+            channels (int): Number of input channels
+            num_classes (int): Number of output classes
+            bias (bool): Whether to use bias in convolutional layers
+            init_weights (bool): Whether to initialize weights
+            zero_init_residual (bool): Whether to zero-initialize the last BN in each residual block
         """
         
         super(ResNet, self).__init__()
@@ -133,7 +210,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(bottleneck, 256, 2, bias, layers[2])
         self.layer4 = self._make_layer(bottleneck, 512, 2, bias, layers[3])
 
-        # pooling and classifier
+        # Pooling and Classifier
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten(1)
         self.fc = nn.Linear(512*bottleneck.expansion, num_classes)
@@ -189,7 +266,7 @@ class ResNet(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
     def forward(self, x: Tensor) -> Tensor:
-        # Initial layers
+        # Initial input layers
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -201,7 +278,7 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        # Pooling and classifier
+        # Pooling and Classifier
         x = self.avgpool(x)
         x = self.flatten(x)
         x = self.fc(x)
@@ -230,13 +307,13 @@ def resnet(
     Create a ResNet model.
     
     Args:
-        name: ResNet model name (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
-        pretrained: Optional path to pretrained weights
-        channels: Number of channels in input images (1 for grayscale, 3 for RGB)
-        num_classes: Number of output classes
-        bias: Whether to use bias in convolutional layers
-        init_weights: Whether to initialize weights
-        zero_init_residual: Whether to zero-initialize the last BN in each residual block
+        name (str): Name of the ResNet model (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
+        pretrained (str): Path to the pretrained weights
+        channels (int): Number of input channels
+        num_classes (int): Number of output classes
+        bias (bool): Whether to use bias in convolutional layers
+        init_weights (bool): Whether to initialize weights
+        zero_init_residual (bool): Whether to zero-initialize the last BN in each residual block
     """
 
     if name not in RESNET_CONFIGS:

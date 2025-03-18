@@ -132,8 +132,11 @@ UNet-Segmentation
 ├── train/            # Training-related scripts
 │   ├── loss.py
 │   └── train.py
+├── __init__.py
 ├── main.py           # Main entry point for running experiments
 ├── README.md         # Project documentation (this file)
-└── requirements.txt  # Dependencies required to run the project
+├── requirements.txt  # Dependencies required to run the project
+├── setup.cfg
+└── setup.py
 ```
 

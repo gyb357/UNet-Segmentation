@@ -1,3 +1,6 @@
 torch
-matplotlib
+torchvision
 tensorboard
+matplotlib
+pandas
+pyyaml

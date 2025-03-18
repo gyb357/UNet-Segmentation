@@ -12,14 +12,22 @@ def miou_coefficient(
     """
     Compute the mean IoU (Intersection over Union) for a batch of predictions.
 
+    Formula
+    -------
+       IoU = TP / (TP + FP + FN)
+     - TP: True positive
+     - FP: False positive
+     - FN: False negative
+
     Args:
-        outputs: Predicted mask tensor
-        masks: Ground truth mask tensor
-        num_classes: Number of classes
-        smooth: Smoothing factor to avoid division by zero
-        threshold: Threshold value for binarization
+        outputs (Tensor): Predicted mask tensor
+        masks (Tensor): Ground truth mask tensor
+        num_classes (int): Number of classes
+        smooth (float): Smoothing factor to avoid division by zero
+        threshold (float): Threshold value for binarization
     """
 
+    # Apply the activation function for binary or multi-class segmentation
     if num_classes == 1:
         outputs = torch.sigmoid(outputs)
     else:
@@ -28,8 +36,12 @@ def miou_coefficient(
     # Binarize outputs and masks for each class
     iou_list = []
     for i in range(num_classes):
-        output_class = (outputs[:, i] > threshold).float() if num_classes > 1 else (outputs > threshold).float()
-        mask_class = (masks[:, i] > threshold).float() if num_classes > 1 else (masks > threshold).float()
+        if num_classes > 1:
+            output_class = (outputs[:, i] > threshold).float()
+            mask_class = (masks[:, i] > threshold).float()
+        else:
+            output_class = (outputs > threshold).float()
+            mask_class = (masks > threshold).float()
 
         # Flatten the tensors
         output_flat = output_class.view(-1)
@@ -54,14 +66,22 @@ def dice_coefficient(
     """
     Compute the Dice coefficient for a batch of predictions.
 
+    Formula
+    -------
+       Dice = (2 * TP) / (2 * TP + FP + FN)
+     - TP: True positive
+     - FP: False positive
+     - FN: False negative
+
     Args:
-        outputs: Predicted mask tensor
-        masks: Ground truth mask tensor
-        num_classes: Number of classes
-        smooth: Smoothing factor to avoid division by zero
-        threshold: Threshold value for binarization
+        outputs (Tensor): Predicted mask tensor
+        masks (Tensor): Ground truth mask tensor
+        num_classes (int): Number of classes
+        smooth (float): Smoothing factor to avoid division by zero
+        threshold (float): Threshold value for binarization
     """
 
+    # Apply the activation function for binary or multi-class segmentation
     if num_classes == 1:
         outputs = torch.sigmoid(outputs)
     else:
@@ -70,14 +90,18 @@ def dice_coefficient(
     # Binarize outputs and masks for each class
     dice_list = []
     for i in range(num_classes):
-        output_class = (outputs[:, i] > threshold).float() if num_classes > 1 else (outputs > threshold).float()
-        mask_class = (masks[:, i] > threshold).float() if num_classes > 1 else (masks > threshold).float()
+        if num_classes > 1:
+            output_class = (outputs[:, i] > threshold).float()
+            mask_class = (masks[:, i] > threshold).float()
+        else:
+            output_class = (outputs > threshold).float()
+            mask_class = (masks > threshold).float()
 
         # Flatten the tensors
         output_flat = output_class.view(-1)
         mask_flat = mask_class.view(-1)
 
-        # Intersection
+        # Intersection and dice
         intersection = torch.logical_and(output_flat, mask_flat).sum().float()
         sum_output_mask = output_flat.sum() + mask_flat.sum()
         dice = (2*intersection + smooth)/(sum_output_mask + smooth)
@@ -97,11 +121,11 @@ def miou_loss(
     Compute the mean IoU (Intersection over Union) loss for a batch of predictions.
 
     Args:
-        outputs: Predicted mask tensor
-        masks: Ground truth mask tensor
-        num_classes: Number of classes
-        smooth: Smoothing factor to avoid division by zero
-        threshold: Threshold value for binarization
+        outputs (Tensor): Predicted mask tensor
+        masks (Tensor): Ground truth mask tensor
+        num_classes (int): Number of classes
+        smooth (float): Smoothing factor to avoid division by zero
+        threshold (float): Threshold value for binarization
     """
 
     return 1.0 - miou_coefficient(outputs, masks, num_classes, smooth, threshold)
@@ -118,11 +142,11 @@ def dice_loss(
     Compute the Dice loss for a batch of predictions.
 
     Args:
-        outputs: Predicted mask tensor
-        masks: Ground truth mask tensor
-        num_classes: Number of classes
-        smooth: Smoothing factor to avoid division by zero
-        threshold: Threshold value for binarization
+        outputs (Tensor): Predicted mask tensor
+        masks (Tensor): Ground truth mask tensor
+        num_classes (int): Number of classes
+        smooth (float): Smoothing factor to avoid division by zero
+        threshold (float): Threshold value for binarization
     """
 
     return 1.0 - dice_coefficient(outputs, masks, num_classes, smooth, threshold)

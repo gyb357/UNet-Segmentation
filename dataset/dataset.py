@@ -1,11 +1,11 @@
 import logging
 import os
 import numpy as np
-import torch.nn.functional as F
 import random
 import torch
 from typing import Tuple, Optional, List, Dict
 from PIL import Image, ImageDraw
+from torchvision.transforms import functional as F
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch import Tensor
 
@@ -23,11 +23,11 @@ class MaskDatasetGenerator():
     ) -> None:
         """
         Args:
-            label_path: Path to the directory containing label files
-            mask_path: Path where mask images will be saved
-            mask_size: Size of the output mask (width, height)
-            mask_extension: File extension for saved masks (e.g., '.png')
-            mask_fill: Pixel value for the foreground (default: 255)
+            label_path (str): Path to the directory containing label files
+            mask_path (str): Path where mask images will be saved
+            mask_size (tuple): Size of the output mask (width, height)
+            mask_extension (str): File extension for saved masks (e.g., `.jpg` or `.png`, etc.)
+            mask_fill (int): Pixel value for the foreground
         """
         
         # Set up logging
@@ -102,15 +102,15 @@ class Augmentation():
     ) -> None:
         """
         Args:
-            channels: Number of channels in input images (1 for grayscale, 3 for RGB)
-            resize: Optional tuple for resizing (width, height)
-            hflip: Whether to apply horizontal flip
-            vflip: Whether to apply vertical flip
-            rotate: Maximum rotation angle (will use random angle between -rotate and +rotate)
-            saturation: Maximum saturation adjustment factor
-            brightness: Maximum brightness adjustment factor
-            factor: Global adjustment scale factor
-            p: Probability of applying each augmentation
+            channels (int): Number of channels in input images (1 for grayscale, 3 for RGB)
+            resize (tuple): Optional tuple for resizing (width, height)
+            hflip (bool): Whether to apply horizontal flip
+            vflip (bool): Whether to apply vertical flip
+            rotate (float): Maximum rotation angle (will use random angle between -rotate and +rotate)
+            saturation (float): Maximum saturation adjustment factor
+            brightness (float): Maximum brightness adjustment factor
+            factor (float): Global adjustment scale factor
+            p (float): Probability of applying each augmentation (0.0 ~ 1.0)
         """
 
         # Attributes
@@ -172,11 +172,11 @@ class SegmentationDataset(Dataset):
     ) -> None:
         """
         Args:
-            image_path: Directory containing input images
-            mask_path: Directory containing corresponding mask images
-            extension: File extension to filter for (e.g., '.png')
-            num_images: Maximum number of images to use (0 means use all)
-            augmentation: Optional augmentation object to apply
+            image_path (str): Directory containing input images
+            mask_path (str): Directory containing corresponding mask images
+            extension (str): File extension to filter for (e.g., `.jpg` or `.png`, etc.)
+            num_images (int): Maximum number of images to use (0 means use all)
+            augmentation (Augmentation): Optional augmentation object to apply
         """
 
         # Attributes
@@ -255,12 +255,12 @@ class SegmentationDataLoader(DataLoader):
     ) -> None:
         """
         Args:
-            dataset: SegmentationDataset instance
-            dataset_split: Dictionary with split ratios (train, val, test)
-            batch_size: Batch size for dataloaders
-            shuffle: Whether to shuffle the data
-            num_workers: Number of worker processes for data loading
-            pin_memory: Whether to pin memory for faster GPU transfer
+            dataset (SegmentationDataset): SegmentationDataset instance
+            dataset_split (dict): Dictionary with split ratios (train, val, test)
+            batch_size (int): Batch size for dataloaders
+            shuffle (bool): Whether to shuffle the data
+            num_workers (int): Number of worker processes for data loading
+            pin_memory (bool): Whether to pin memory for faster GPU transfer
         """
 
         # Attributes
