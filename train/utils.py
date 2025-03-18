@@ -34,35 +34,3 @@ def tensor2numpy(tensor: Tensor) -> np.float32:
 
     return tensor.detach().cpu().numpy().astype(np.float32)
 
-
-@staticmethod
-def visualize(
-    outputs: Tensor,
-    masks: Tensor,
-    num_classes: int,
-    display_time: float = 3.0,
-    save_path: Optional[str] = None
-) -> None:
-    """
-    Visualize the predicted masks and ground truth masks.
-    
-    Args:
-        outputs (Tensor): Predicted mask tensor
-        masks (Tensor): Ground truth mask tensor
-        num_classes (int): Number of classes
-        display_time (float): Time to display each image (0 for no display)
-        save_path (str): Path to save the visualization
-    """
-
-    # Check if display time is valid
-    if display_time <= 0 and save_path is None:
-        return
-    
-    if num_classes == 1:
-        outputs = torch.sigmoid(outputs)
-    else:
-        outputs = torch.softmax(outputs, dim=1)
-
-    
-    plt.figure(figsize=(12, 6))
-    
