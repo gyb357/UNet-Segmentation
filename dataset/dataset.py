@@ -124,38 +124,37 @@ class Augmentation():
         self.factor = factor
         self.p = p
 
-    def __call__(
-            self,
-            image: Image.Image,
-            mask: Image.Image
-    ) -> Tuple[Image.Image, Image.Image]:
+    def __call__(self, image: Image.Image, mask: Image.Image) -> Tuple[Image.Image, Image.Image]:
         # Convert to grayscale if needed
         if self.channels == 1:
-            image = F.to_grayscale(image, 1)
+            image = image.convert("L")   # Convert to grayscale mode "L"
+        else:
+            image = image.convert("RGB") # Ensure image is RGB if channels == 3
 
-        # Ensure mask is binary
-        mask = mask.convert('1')
+        # Convert mask to grayscale (single channel)
+        mask = mask.convert("L")
 
         # Apply geometric transformations
         if self.resize is not None:
             image = F.resize(image, self.resize)
-            mask = F.resize(image, self.resize)
+            mask = F.resize(mask, self.resize)
         if self.hflip and random.random() < self.p:
             image = F.hflip(image)
-            mask = F.hflip(image)
+            mask = F.hflip(mask)
         if self.vflip and random.random() < self.p:
             image = F.vflip(image)
-            mask = F.vflip(image)
+            mask = F.vflip(mask)
         if self.rotate > 0:
             angle = random.uniform(-self.rotate, self.rotate)
             image = F.rotate(image, angle)
-            mask = F.rotate(image, angle)
+            mask = F.rotate(mask, angle)
 
-        # Apply color transformations (to image only)
-        if self.saturation > 0:
-            image = F.adjust_saturation(image, random.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
-        if self.brightness > 0:
-            image = F.adjust_brightness(image, random.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
+        # Apply color transformations (only to image, not mask)
+        if self.channels == 3: # Only apply to RGB images
+            if self.saturation > 0:
+                image = F.adjust_saturation(image, random.uniform(1 - self.saturation, 1 + self.saturation)*self.factor)
+            if self.brightness > 0:
+                image = F.adjust_brightness(image, random.uniform(1 - self.brightness, 1 + self.brightness)*self.factor)
         return image, mask
 
 

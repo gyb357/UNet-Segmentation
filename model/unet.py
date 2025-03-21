@@ -1,8 +1,8 @@
 import torch.nn as nn
 from typing import Optional, Callable
 from utils import ternary_op_elif
-from resnet import resnet
-from modules import EncoderBlock, DoubleConv2d, DecoderBlock, OutputBlock
+from model.resnet import resnet
+from model.modules import EncoderBlock, DoubleConv2d, DecoderBlock, OutputBlock
 from torch import Tensor
 
 
