@@ -59,9 +59,9 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 # 📋Model Comparison
 
-## UNet
-
 <div align="center">
+
+## UNet
 
 | Model Architecture | Backbone  | Number of Parameters |
 |--------------------|-----------|----------------------|
