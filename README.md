@@ -15,7 +15,7 @@
      * Check the Running Environment
      * Installation and Dependencies
      * Downloading Pre-Trained ResNet Weights
-     * 
+     * Training the Model
 5. [Project Structure](#Project-Structure)
 
 
@@ -119,7 +119,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ```
 
 ## 3. Downloading Pre-Trained ResNet Weights
-See Model Comparison topic .
+See Model Comparison topic.
 
 ## 4. Training the Model
 Once the setup is complete, you can start training the U-Net model using the following command:
