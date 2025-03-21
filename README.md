@@ -59,6 +59,8 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 # 📋Model Comparison
 
+## UNet
+
 <div align="center">
 
 | Model Architecture | Backbone  | Number of Parameters |
@@ -70,7 +72,21 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 | ResUNet101        | ResNet101 | 59.89M              |
 | ResUNet152        | ResNet152 | 75.54M              |
 
+## ResNet
+
+| Model Architecture | Layers | Parameters | ImageNet Accuracy (Top-1/Top-5) | Download Link |
+|--------------------|--------|------------|---------------------------------|---------------|
+| ResNet18         | 18     | 11.69M     | 69.76% / 89.08%                 | [resnet18-f37072fd.pth]("https://download.pytorch.org/models/resnet18-f37072fd.pth") |
+| ResNet34         | 34     | 21.80M     | 73.31% / 91.42%                 | [resnet34-b627a593.pth]("https://download.pytorch.org/models/resnet34-b627a593.pth") |
+| ResNet50         | 50     | 25.56M     | 80.86% / 95.43%                 | [resnet50-11ad3fa6.pth]("https://download.pytorch.org/models/resnet50-11ad3fa6.pth") |
+| ResNet101        | 101    | 44.55M     | 81.89% / 95.78%                 | [resnet101-cd907fc2.pth]("https://download.pytorch.org/models/resnet101-cd907fc2.pth") |
+| ResNet152        | 152    | 60.19M     | 82.28% / 96.00%                 | [resnet152-f82ba261.pth]("https://download.pytorch.org/models/resnet152-f82ba261.pth") |
+
+Download the Imagenet1K pretrained model and put it in the model/pretrained/.
+More information is available [here](https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html).
+
 </div>
+
 
 *****
 
