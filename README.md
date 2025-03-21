@@ -85,7 +85,7 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 </div>
 
  > [!Note]
- > Download the Imagenet1K pretrained model and put it in the model/pretrained/.
+ > Download the Imagenet1K pretrained model and put it in the `model/pretrained/.`
  > More information is available [here](https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html).
 
 
@@ -119,8 +119,16 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ```
 
 ## 3. Downloading Pre-Trained ResNet Weights
+See Model Comparison topic .
 
-## 4. 
+## 4. Training the Model
+Once the setup is complete, you can start training the U-Net model using the following command:
+
+```bash
+python main.py --config config/config.yaml
+```
+
+For custom training configurations, modify `config/config.yaml`.
 
 
 *****
@@ -140,6 +148,7 @@ UNet-Segmentation
 │   ├── mask/         # Stores segmentation masks
 │   └── dataset.py
 ├── model/            # Contains model architectures and utilities
+│   ├── pretrained/   # Put pretrained resnet weights here
 │   ├── modules.py
 │   ├── resnet.py
 │   ├── unet.py
@@ -148,12 +157,8 @@ UNet-Segmentation
 │   └── utils.py
 ├── train/            # Training-related scripts
 │   ├── loss.py
-│   └── train.py
-├── __init__.py
-├── main.py           # Main entry point for running experiments
-├── README.md         # Project documentation (this file)
-├── requirements.txt  # Dependencies required to run the project
-├── setup.cfg
-└── setup.py
+│   ├── train.py
+│   └── utils.py
+└── main.py           # Main entry point for running experiments
 ```
 

@@ -1,10 +1,7 @@
 import yaml
 import numpy as np
-import torch
-import matplotlib.pyplot as plt
 from typing import Dict, Any
 from torch import Tensor
-from typing import Optional
 
 
 @staticmethod
