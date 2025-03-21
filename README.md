@@ -82,11 +82,11 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 | ResNet101        | 101    | 44.55M     | 81.89% / 95.78%                 | [resnet101-cd907fc2.pth]("https://download.pytorch.org/models/resnet101-cd907fc2.pth") |
 | ResNet152        | 152    | 60.19M     | 82.28% / 96.00%                 | [resnet152-f82ba261.pth]("https://download.pytorch.org/models/resnet152-f82ba261.pth") |
 
+</div>
+
  > [!Note]
  > Download the Imagenet1K pretrained model and put it in the model/pretrained/.
  > More information is available [here](https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html).
-
-</div>
 
 
 *****
