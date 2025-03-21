@@ -153,12 +153,11 @@ UNet-Segmentation
 │   ├── resnet.py
 │   ├── unet.py
 │   ├── unet2+.py
-│   ├── unet3+.py
-│   └── utils.py
+│   └── unet3+.py
 ├── train/            # Training-related scripts
 │   ├── loss.py
-│   ├── train.py
-│   └── utils.py
-└── main.py           # Main entry point for running experiments
+│   └── train.py
+├── main.py           # Main entry point for running experiments
+└── utils.py
 ```
 
