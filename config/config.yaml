@@ -5,15 +5,15 @@ tasks:
 
 # Model
 model:
-  channels: 3                 # Number of input channels
-  num_classes: 1             # Number of output classes
-  backbone: null             # Backbone architecture (e.g., resnet18, resnet34, resnet50, resnet101, resnet152)
-  pretrained: null          # Pretrained model path
-  freeze_backbone: false    # Whether to freeze backbone weights
-  bias: false              # Whether to use bias in convolutional layers
-  normalize: null        # Normalization layer to use (default: nn.BatchNorm2d)
-  dropout: 0.5             # Dropout probability
-  init_weights: false     # Whether to initialize weights
+  channels: 3                  # Number of input channels
+  num_classes: 1               # Number of output classes
+  backbone: null               # Backbone architecture (e.g., resnet18, resnet34, resnet50, resnet101, resnet152)
+  pretrained: null             # Pretrained model path
+  freeze_backbone: false       # Whether to freeze backbone weights
+  bias: false                  # Whether to use bias in convolutional layers
+  normalize: null              # Normalization layer to use (default: nn.BatchNorm2d)
+  dropout: 0.5                 # Dropout probability
+  init_weights: false          # Whether to initialize weights
 
 mask_dataset:
   # Leave 'label_path' or 'mask_path' empty if not used
@@ -36,8 +36,8 @@ augmentation:
 
 # SegmentationDataset
 segmentation_dataset:
-  image_path: "dataset/image" # Directory containing input images
-  mask_path: "dataset/mask"   # Directory containing corresponding mask images
+  image_path: "dataset/image"  # Directory containing input images
+  mask_path: "dataset/mask"    # Directory containing corresponding mask images
   extension: ".jpg"            # File extension for the images and masks (e.g., .jpg, .png)
   num_images: 0                # Maximum number of images to use (0 means use all)
   augmentation: true           # Whether to apply augmentations or not
@@ -56,15 +56,15 @@ segmentation_dataloader:
 
 # Trainer
 trainer:
-  lr: 0.0001                    # Learning rate for the optimizer
+  lr: 0.0001                   # Learning rate for the optimizer
   loss: "BCEWithLogitsLoss"    # Loss function
   loss_coefficient:
     loss: 1.0                  # Coefficient for the loss function
     metric: 1.0                # Coefficient for the metric
-  epochs: 100                   # Number of epochs to train the model
+  epochs: 100                  # Number of epochs to train the model
   accumulation_step: 1         # Number of steps to accumulate gradients
-  checkpoint_step: 10           # Number of epochs to save model checkpoint
+  checkpoint_step: 10          # Number of epochs to save model checkpoint
   show_time: 1                 # Number of steps to show sample images
-  early_stopping_patience: 10   # Number of epochs to wait before early stopping
+  early_stopping_patience: 10  # Number of epochs to wait before early stopping
   mixed_precision: false       # Whether to use mixed precision training
   weight_decay: 0.0            # Weight decay for the optimizer

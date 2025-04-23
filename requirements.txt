@@ -1,6 +1,7 @@
 torch
 torchvision
 tensorboard
+tqdm
 matplotlib
 pandas
 pyyaml

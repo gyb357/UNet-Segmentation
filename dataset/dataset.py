@@ -11,8 +11,6 @@ from torch import Tensor
 
 
 class MaskDatasetGenerator():
-    """Generate a mask image with the Yolo dataset format as input."""
-
     def __init__(
             self,
             label_path: str,
@@ -86,8 +84,6 @@ class MaskDatasetGenerator():
 
 
 class Augmentation():
-    """Class for applying various image augmentations to image and mask pairs."""
-
     def __init__(
             self,
             channels: int,
@@ -159,8 +155,6 @@ class Augmentation():
 
 
 class SegmentationDataset(Dataset):
-    """Dataset class for loading image-mask pairs for segmentation tasks."""
-
     def __init__(
             self,
             image_path: str,
@@ -235,8 +229,6 @@ class SegmentationDataset(Dataset):
 
 
 class SegmentationDataLoader(DataLoader):
-    """DataLoader class for segmentation datasets and managing train/val/test splits."""
-
     default_split: Dict[str, float] = {
         'train': 0.8,
         'val': 0.1,

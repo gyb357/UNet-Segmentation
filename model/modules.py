@@ -1,7 +1,4 @@
-import torch.nn as nn
-import torch
-from typing import Optional, Callable, Tuple
-from torch import Tensor
+from . import *
 
 
 class DoubleConv2d(nn.Module):
@@ -128,6 +125,9 @@ class DecoderBlock(nn.Module):
 
     def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         x = self.trans(x1)
+
+        assert x.shape[2:] == x2.shape[2:], f"Skip connection size {x2.shape[2:]} doesn't match upsampled size {x1.shape[2:]}."
+
         x = self.conv(torch.cat([x, x2], dim=1))
         x = self.drop(x)
         return x

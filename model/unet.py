@@ -1,9 +1,4 @@
-import torch.nn as nn
-from typing import Optional, Callable
-from utils import ternary_op_elif
-from model.resnet import resnet
-from model.modules import EncoderBlock, DoubleConv2d, DecoderBlock, OutputBlock
-from torch import Tensor
+from . import *
 
 
 # Configuration of the decoder layers
