@@ -231,7 +231,7 @@ class SegmentationDataset(Dataset):
 class SegmentationDataLoader(DataLoader):
     default_split: Dict[str, float] = {
         'train': 0.8,
-        'val': 0.1,
+        'valid': 0.1,
         'test': 0.1
     }
 
@@ -247,7 +247,7 @@ class SegmentationDataLoader(DataLoader):
         """
         Args:
             dataset (SegmentationDataset): SegmentationDataset instance
-            dataset_split (dict): Dictionary with split ratios (train, val, test)
+            dataset_split (dict): Dictionary with split ratios (train, valid, test)
             batch_size (int): Batch size for dataloaders
             shuffle (bool): Whether to shuffle the data
             num_workers (int): Number of worker processes for data loading
@@ -267,21 +267,21 @@ class SegmentationDataLoader(DataLoader):
     def _get_length(self) -> Tuple[int, int, int]:
         dataset_len = len(self.dataset)
         train = int(self.dataset_split['train']*dataset_len)
-        val = int(self.dataset_split['val']*dataset_len)
-        test = dataset_len - train - val
-        return train, val, test
+        valid = int(self.dataset_split['valid']*dataset_len)
+        test = dataset_len - train - valid
+        return train, valid, test
     
     def get_loader(self, seed: int = 42) -> Dict[str, DataLoader]:
         generator = torch.Generator().manual_seed(seed)
 
         # Get split lengths
-        train_len, val_len, test_len = self._get_length()
+        train_len, valid_len, test_len = self._get_length()
         # Split the dataset
-        splits = random_split(self.dataset, [train_len, val_len, test_len], generator)
+        splits = random_split(self.dataset, [train_len, valid_len, test_len], generator)
 
         # Create dataloaders
         loaders = {}
-        phases = ['train', 'val', 'test']
+        phases = ['train', 'valid', 'test']
 
         for phase, dataset in zip(phases, splits):
             loaders[phase] = DataLoader(
@@ -293,6 +293,6 @@ class SegmentationDataLoader(DataLoader):
                 drop_last=(phase == 'train')                 # Only drop last incomplete batch during training
             )
 
-        print(f"Dataset split: train={train_len}, val={val_len}, test={test_len} samples")
+        print(f"Dataset split: train={train_len}, valid={valid_len}, test={test_len} samples")
         return loaders
 

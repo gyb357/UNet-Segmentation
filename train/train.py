@@ -8,7 +8,7 @@ from typing import Dict, Tuple
 from torch.utils.data import DataLoader
 from torch import device, Tensor
 from torch.amp import GradScaler, autocast
-from loss import Loss
+from train.loss import Loss
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -84,10 +84,10 @@ class Trainer():
         # Tensorboard
         self.tensorboard = SummaryWriter()
         # Paths
-        self.model_path = ''
-        self.log_path = ''
-        self.checkpoint_path = ''
-        self.best_model_path = ''
+        self.model_path = './model'
+        self.log_path = './log'
+        self.checkpoint_path = './checkpoint'
+        self.best_model_path = './best_model'
 
 
     def _mean_over_classes(
