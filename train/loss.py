@@ -6,32 +6,34 @@ class Loss():
     def __init__(
             self,
             num_classes: int,
+            method: str,
             threshold: float = 0.5,
             epsilon: float = 1e-6,
     ) -> None:
         """
         Args:
-            num_classes (int): The number of classes.
-            epsilon (float): The epsilon value. (default: 1e-6)
-            threshold (float): The threshold value. (default: 0.5)
+            num_classes (int): The number of classes
+            method (str): The method to compute the coefficient ('dice' or 'iou')
+            threshold (float): The threshold value (default: 0.5)
+            epsilon (float): The epsilon value (default: 1e-6)
         """
 
         # Attributes
         self.num_classes = num_classes
+        self.method = method
         self.threshold = threshold
         self.epsilon = epsilon
         self.activation = torch.sigmoid if num_classes == 1 else lambda x: torch.softmax(x, dim=1)
 
-    def get_coefficient(self, outputs: Tensor, masks: Tensor, method: str) -> Tensor:
+    def get_coefficient(self, preds: Tensor, masks: Tensor) -> Tensor:
         """
         Args:
-            outputs (Tensor): The predicted outputs.
-            masks (Tensor): The ground truth masks.
-            method (str): The method to compute the coefficient. ('dice' or 'iou')
+            preds (Tensor): The predicted outputs
+            masks (Tensor): The ground truth masks
         """
 
         # Activation function
-        preds = self.activation(outputs)
+        preds = self.activation(preds)
 
         # Binarize
         coefs = []
@@ -54,28 +56,27 @@ class Loss():
             mask_sum = mask_bin.sum().float()
 
             # Compute coefficient
-            if method == 'iou':
+            if self.method == 'iou':
                 union = pred_sum + mask_sum - tp
                 coef = (tp + self.epsilon) / (union + self.epsilon)
-            elif method == 'dice':
+            elif self.method == 'dice':
                 denom = pred_sum + mask_sum
                 coef = (2 * tp + self.epsilon) / (denom + self.epsilon)
             else:
-                raise ValueError(f"Unknown method '{method}', choose 'dice' or 'iou'.")
+                raise ValueError(f"Unknown method '{self.method}', choose 'dice' or 'iou'.")
             
             coefs.append(coef)
         return torch.stack(coefs).mean()
     
-    def get_loss(self, outputs: Tensor, masks: Tensor, method: str) -> Tensor:
+    def get_loss(self, preds: Tensor, masks: Tensor) -> Tensor:
         """
         Args:
-            outputs (Tensor): The predicted outputs.
-            masks (Tensor): The ground truth masks.
-            method (str): The method to compute the coefficient. ('dice' or 'iou')
+            preds (Tensor): The predicted outputs
+            masks (Tensor): The ground truth masks
         """
 
         # Get coefficient
-        coef = self.get_coefficient(outputs, masks, method)
+        coef = self.get_coefficient(preds, masks)
 
         # Compute loss
         return 1.0 - coef

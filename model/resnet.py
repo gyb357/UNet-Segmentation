@@ -8,7 +8,7 @@ def conv1x1_layer(
         bias: bool = False
 ) -> nn.Conv2d:
     """
-    1x1 convolutional layer.
+    1x1 convolutional layer
 
     Args:
         in_channels (int): Number of input channels
@@ -27,7 +27,7 @@ def conv3x3_layer(
         bias: bool = False
 ) -> nn.Conv2d:
     """
-    3x3 convolutional layer.
+    3x3 convolutional layer
     
     Args:
         in_channels (int): Number of input channels
@@ -41,7 +41,7 @@ def conv3x3_layer(
 
 class Bottleneck2Conv(nn.Module):
     """
-    Bottleneck block with two convolutional (3x3, 3x3) layers.
+    Bottleneck block with two convolutional (3x3, 3x3) layers
     
     Structure
     ---------
@@ -98,7 +98,7 @@ class Bottleneck2Conv(nn.Module):
 
 class Bottleneck3Conv(nn.Module):
     """
-    Bottleneck block with three convolutional (1x1, 3x3, 1x1) layers.
+    Bottleneck block with three convolutional (1x1, 3x3, 1x1) layers
 
     Structure
     ---------
@@ -163,7 +163,7 @@ class Bottleneck3Conv(nn.Module):
 
 class ResNet(nn.Module):
     """
-    ResNet model with bottleneck blocks.
+    ResNet model with bottleneck blocks
     
     Structure
     ---------
@@ -301,7 +301,7 @@ def resnet(
         zero_init_residual: bool = False,
 ) -> ResNet:
     """
-    Create a ResNet model.
+    Create a ResNet model
     
     Args:
         name (str): Name of the ResNet model (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)

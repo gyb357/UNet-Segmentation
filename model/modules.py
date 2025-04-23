@@ -3,7 +3,7 @@ from . import *
 
 class DoubleConv2d(nn.Module):
     """
-    Double convolutional block with normalization and ReLU activation.
+    Double convolutional block with normalization and ReLU activation
     
     Structure
     ---------
@@ -47,7 +47,7 @@ class DoubleConv2d(nn.Module):
 
 class EncoderBlock(nn.Module):
     """
-    Encoder block with double convolutional layer and max pooling.
+    Encoder block with double convolutional layer and max pooling
     
     Structure
     ---------
@@ -87,8 +87,8 @@ class EncoderBlock(nn.Module):
 
 class DecoderBlock(nn.Module):
     """
-    Decoder block with transposed convolutional layer and double convolutional layer.
-    Concatenates the input from the encoder block.
+    Decoder block with transposed convolutional layer and double convolutional layer
+    Concatenates the input from the encoder block
 
     Structure
     ---------
@@ -133,10 +133,64 @@ class DecoderBlock(nn.Module):
         return x
 
 
+class DecoderBlock3Plus(nn.Module):
+    """
+    Decoder block with UNet3+ source features
+
+    Structure
+    ---------
+     | ↓ Conv2d (1x1)
+     | ↓ DoubleConv2d
+    """
+
+    def __init__(
+            self,
+            in_channels_list: Tuple[int, int, int, int, int],
+            mid_channels: int,
+            bias: bool = False,
+            normalize: Optional[Callable[..., nn.Module]] = None,
+            dropout: float = 0.0
+    ) -> None:
+        """
+        Args:
+            in_channels_list (Tuple[int, int, int, int, int]): List of input channels for each source feature
+            mid_channels (int): Number of middle channels
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+        """
+
+        super(DecoderBlock3Plus, self).__init__()
+        self.conv = nn.ModuleList([
+            nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
+            for in_channels in in_channels_list
+        ])
+        self.fusion = DoubleConv2d(mid_channels * 5, mid_channels, bias, normalize)
+        self.dropout = nn.Dropout(dropout)
+
+    def _rescale(self, x: Tensor, y: Tuple[int, int]) -> Tensor:
+        # Get current size
+        h, w = x.shape[2:]
+        y_h, y_w = y
+
+        # Downsample if larger
+        if h > y_h and w > y_w:
+            return F.max_pool2d(x, int(h / y_h))
+        # Upsample if smaller
+        return F.interpolate(x, size=y, mode='bilinear', align_corners=True)
+    
+    def forward(self, x: Tensor, y: Tuple[int, int]) -> Tensor:
+        aligned = []
+        for conv, feat in zip(self.conv, x):
+            res = self._rescale(feat, y)
+            aligned.append(conv(res))
+        fused = self.fusion(torch.cat(aligned, dim=1))
+        return self.dropout(fused)
+
+
 class OutputBlock(nn.Module):
     """
-    Output block with transposed convolutional layer and convolutional layer.
-    If backbone is not provided, the block only contains a convolutional layer.
+    Output block with transposed convolutional layer and convolutional layer
+    If backbone is not provided, the block only contains a convolutional layer
     
     Structure
     ---------

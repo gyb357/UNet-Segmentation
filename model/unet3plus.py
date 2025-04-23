@@ -1,33 +1,15 @@
 from . import *
 
 
-# Configuration of the decoder layers
-UNET_CONFIGS = {
-    'shallow': {
-        'conv_filters': [768, 384, 192, 128, 64],
-        'trans_filters': [512, 512, 256, 128, 64]
-    },
-    'deep': {
-        'conv_filters': [1536, 768, 384, 128, 64],
-        'trans_filters': [2048, 512, 256, 128, 64]
-    },
-    'default': {
-        'conv_filters': [1024, 512, 256, 128, 64],
-        'trans_filters': [1024, 512, 256, 128, 64]
-    }
+_UNET3PLUS_CONFIGS = {
+    'd4': (64, 128, 256, 512, 1024),
+    'd3': (64, 128, 256, 64, 1024),
+    'd2': (64, 128, 64, 64, 1024),
+    'd1': (64, 64, 64, 64, 1024)
 }
 
 
-class UNet(nn.Module):
-    """
-    UNet implementation for image segmentation
-    This model can use either a ResNet backbone as encoder or a standard UNet encoder
-
-    Structure
-    ---------
-    https://arxiv.org/abs/1505.04597
-    """
-    
+class UNet3Plus(nn.Module):
     def __init__(
             self,
             channels: int,
@@ -39,6 +21,7 @@ class UNet(nn.Module):
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0,
             init_weights: bool = False,
+            cgm: bool = False
     ) -> None:
         """
         Args:
@@ -51,21 +34,13 @@ class UNet(nn.Module):
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
             dropout (float): Dropout probability
             init_weights (bool): Whether to initialize weights
+            cgm (bool): Whether to use CGM
         """
 
-        super(UNet, self).__init__()
+        super(UNet3Plus, self).__init__()
         # Attributes
         self.backbone = backbone
-
-        # Get configuration based on backbone depth
-        self.backbone_depth = ternary_op_elif(
-            backbone in ['resnet18', 'resnet34'], 'shallow',
-            backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
-            'default'
-        )
-        config = UNET_CONFIGS[self.backbone_depth]
-        self.decoder_conv_filters = config['conv_filters']
-        self.decoder_trans_filters = config['trans_filters']
+        self.cgm = cgm
 
         # Encoder layers (with backbone)
         if backbone:
@@ -93,13 +68,46 @@ class UNet(nn.Module):
             self.e5 = DoubleConv2d(512, 1024, bias, normalize)
 
         # Decoder layers
-        self.d1 = DecoderBlock(self.decoder_trans_filters[0], 512, self.decoder_conv_filters[0], 512, bias, normalize, dropout)
-        self.d2 = DecoderBlock(self.decoder_trans_filters[1], 256, self.decoder_conv_filters[1], 256, bias, normalize, dropout)
-        self.d3 = DecoderBlock(self.decoder_trans_filters[2], 128, self.decoder_conv_filters[2], 128, bias, normalize, dropout)
-        self.d4 = DecoderBlock(self.decoder_trans_filters[3], 64, self.decoder_conv_filters[3], 64, bias, normalize, dropout)
-        
+        self.d1 = DecoderBlock3Plus(
+            in_channels_list=_UNET3PLUS_CONFIGS['d1'],
+            mid_channels=64,
+            normalize=normalize,
+            bias=bias,
+            dropout=dropout
+        )
+        self.d2 = DecoderBlock3Plus(
+            in_channels_list=_UNET3PLUS_CONFIGS['d2'],
+            mid_channels=64,
+            normalize=normalize,
+            bias=bias,
+            dropout=dropout
+        )
+        self.d3 = DecoderBlock3Plus(
+            in_channels_list=_UNET3PLUS_CONFIGS['d3'],
+            mid_channels=64,
+            normalize=normalize,
+            bias=bias,
+            dropout=dropout
+        )
+        self.d4 = DecoderBlock3Plus(
+            in_channels_list=_UNET3PLUS_CONFIGS['d4'],
+            mid_channels=64,
+            normalize=normalize,
+            bias=bias,
+            dropout=dropout
+        )
+
         # Output layer
-        self.out = OutputBlock(self.decoder_conv_filters[4], 32, num_classes, backbone)
+        self.out = OutputBlock(64, 64, num_classes, backbone, bias)
+
+        if cgm:
+            self.cgm_head = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Conv2d(1024, 2, kernel_size=1, bias=bias),
+                nn.AdaptiveMaxPool2d(1),
+                nn.Flatten(),
+                nn.Sigmoid()
+            )
 
         # Initialize weights
         if init_weights:
@@ -130,9 +138,6 @@ class UNet(nn.Module):
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)
 
-    def _get_parameter_count(self) -> int:
-        return sum(p.numel() for p in self.parameters())
-
     def forward(self, x: Tensor) -> Tensor:
         # Encoder
         if self.backbone:
@@ -146,13 +151,27 @@ class UNet(nn.Module):
             e2, p2 = self.e2(p1)
             e3, p3 = self.e3(p2)
             e4, p4 = self.e4(p3)
-            # Center layer
             e5 = self.e5(p4)
 
-        # Decoder
-        d1 = self.d1(e5, e4)
-        d2 = self.d2(d1, e3)
-        d3 = self.d3(d2, e2)
-        d4 = self.d4(d3, e1)
+        # CGM
+        if self.cgm:
+            cls = self.cgm_head(e5).argmax(1).view(-1, 1, 1, 1).float()
+
+        # Decoder fusion passes
+        target4 = e4.shape[-2:]
+        d1 = self.d1((e1, e2, e3, e4, e5), target4)
+
+        target3 = e3.shape[-2:]
+        d2 = self.d2((e1, e2, e3, d1, e5), target3)
+
+        target2 = e2.shape[-2:]
+        d3 = self.d3((e1, e2, d2, d1, e5), target2)
+
+        target1 = e1.shape[-2:]
+        d4 = self.d4((e1, d3, d2, d1, e5), target1)
+
+        # CGM weighting
+        if self.cgm:
+            d4 = d4 * cls
         return self.out(d4)
 

@@ -1,14 +1,13 @@
-import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch
 import os
 import csv
-import time
+from torch import device, Tensor
 from typing import Dict, Tuple
 from torch.utils.data import DataLoader
-from torch import device, Tensor
-from torch.amp import GradScaler, autocast
 from train.loss import Loss
+from torch.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -33,19 +32,33 @@ class Trainer():
             model: nn.Module,
             loss_fn: nn.Module,
             metrics_fn: str,
-
             num_classes: int,
             dataloader: Dict[str, DataLoader],
-
             lr: float = 1e-4,
             weight_decay: float = 0.0,
             mixed_precision: bool = False,
-
             epochs: int = 100,
             accumulation_step: int = 1,
             checkpoint_step: int = 10,
             early_stopping_patience: int = 10,
     ) -> None:
+        """
+        Args:
+            device (device): Device to run the model on
+            model (nn.Module): Model to train
+            loss_fn (nn.Module): Loss function
+            metrics_fn (str): Metrics function ('dice' or 'iou')
+            num_classes (int): Number of classes
+            dataloader (Dict[str, DataLoader]): Data loaders for train, valid, test
+            lr (float): Learning rate (default: 1e-4)
+            weight_decay (float): Weight decay (default: 0.0)
+            mixed_precision (bool): Whether to use mixed precision (default: False)
+            epochs (int): Number of epochs (default: 100)
+            accumulation_step (int): Number of steps to accumulate gradients (default: 1)
+            checkpoint_step (int): Number of epochs to save checkpoint (default: 10)
+            early_stopping_patience (int): Number of epochs to wait before early stopping (default: 10)
+        """
+
         # Attributes
         self.device = device
         self.model = model.to(device)
@@ -58,8 +71,7 @@ class Trainer():
 
         # Loss functions
         self.criterion = loss_fn
-        self.metrics_fn = metrics_fn
-        self.metrics = Loss(num_classes=num_classes)
+        self.metrics = Loss(num_classes, metrics_fn)
 
         # Dataset splits
         self.train_loader = dataloader['train']
@@ -84,47 +96,75 @@ class Trainer():
         # Tensorboard
         self.tensorboard = SummaryWriter()
         # Paths
-        self.model_path = './model'
-        self.log_path = './log'
-        self.checkpoint_path = './checkpoint'
-        self.best_model_path = './best_model'
+        self.model_dir = './model'
+        self.log_dir = './log'
+        self.checkpoint_dir = './checkpoint'
+        self.best_model_dir = './best_model'
 
+    def _check_data_length(self, dataloader: DataLoader) -> int:
+        """
+        Args:
+            dataloader (DataLoader): Data loader
+        """
 
-    def _mean_over_classes(
-        self,
-        fn: callable,
-        preds: Tensor,
-        masks: Tensor,
-        method: str
-    ) -> Tensor:
+        dataset_len = len(dataloader)
+        if dataset_len == 0:
+            raise ValueError('The length of dataset must be at least 1.')
+        return dataset_len
+
+    def _mean_over_classes(self, fn: callable, preds: Tensor, masks: Tensor) -> Tensor:
+        """
+        Args:
+            fn (callable): Function to apply to each class
+            preds (Tensor): Predictions
+            masks (Tensor): Masks
+        """
+
         return sum(
-            fn(preds[:, c:c+1], (masks == c).float(), method)
+            fn(preds[:, c:c+1], (masks == c).float())
             for c in range(self.num_classes)
         ) / self.num_classes
     
     def _get_activation(self, preds: Tensor) -> Tensor:
+        """
+        Args:
+            preds (Tensor): Predictions
+        """
+
         if self.num_classes == 1:
             return torch.sigmoid(preds)
         else:
             return torch.softmax(preds, dim=1)
     
-    def _save_model(self, epoch: int) -> None:
-        if not os.path.exists(self.model_path):
-            os.makedirs(self.model_path)
+    def _save_model(self, epoch: int, dir: str) -> None:
+        """
+        Args:
+            epoch (int): Epoch number
+            dir (str): Directory to save the model
+        """
 
-        torch.save(self.model.state_dict(), os.path.join(self.model_path, f'epoch_{epoch}.pth'))
-        print(f'Model saved at {os.path.join(self.model_path, f"epoch_{epoch}.pth")}')
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        # Save model
+        torch.save(
+            self.model.state_dict(),
+            os.path.join(dir, f'epoch_{epoch}.pth')
+        )
+        print(f'Model saved at {os.path.join(dir, f"epoch_{epoch}.pth")}')
 
     def eval(self, dataloader: DataLoader) -> Tuple[float, float]:
-        # Check for empty dataset
-        dataset_len = len(dataloader)
-        if dataset_len == 0:
-            raise ValueError('The length of dataset must be at least 1.')
+        """
+        Args:
+            dataloader (DataLoader): Data loader
+        """
 
+        # Check for empty dataset
+        dataset_len = self._check_data_length(dataloader)
         # Set model to evaluation mode
         self.model.eval()
         # Initialize metrics
-        total_loss, total_metrics = 0, 0
+        total_loss, total_metrics = 0.0, 0.0
 
         with torch.no_grad():
             for inputs, masks in tqdm(dataloader, desc='Evaluating'):
@@ -137,13 +177,14 @@ class Trainer():
 
                     # Calculate loss
                     loss = self.criterion(preds, masks)
+
                     # Calculate metrics
                     if self.num_classes == 1:
-                        metrics_loss = self.metrics.get_loss(preds, masks, self.metrics_fn)
-                        metrics = self.metrics.get_coefficient(preds, masks, self.metrics_fn)
+                        metrics_loss = self.metrics.get_loss(preds, masks)
+                        metrics = self.metrics.get_coefficient(preds, masks)
                     else:
-                        metrics_loss = self._mean_over_classes(self.metrics.get_loss, preds, masks, self.metrics_fn)
-                        metrics = self._mean_over_classes(self.metrics.get_coefficient, preds, masks, self.metrics_fn)
+                        metrics_loss = self._mean_over_classes(self.metrics.get_loss, preds, masks)
+                        metrics = self._mean_over_classes(self.metrics.get_coefficient, preds, masks)
 
                 # Integrate loss and metrics
                 total_loss += (loss + metrics_loss).item()
@@ -156,17 +197,15 @@ class Trainer():
         
     def fit(self) -> None:
         # Check for empty dataset
-        dataset_len = len(self.train_loader)
-        if dataset_len == 0:
-            raise ValueError('The length of training dataset must be at least 1.')
+        dataset_len = self._check_data_length(self.train_loader)
         
         # Define log recoder
-        if not os.path.exists(self.log_path):
-            os.makedirs(self.log_path)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
-        with open(os.path.join(self.log_path, 'train.csv'), 'w', newline='') as csv_file:
-            writer = csv.DictWriter(csv_file, TRAINER_CONFIGS)
-            writer.writeheader()
+        with open(os.path.join(self.log_dir, 'train.csv'), 'w', newline='') as csv_file:
+            csv_writer = csv.DictWriter(csv_file, TRAINER_CONFIGS)
+            csv_writer.writeheader()
 
             # Empty cache
             torch.cuda.empty_cache()
@@ -175,7 +214,7 @@ class Trainer():
                 # Set model to training mode
                 self.model.train()
                 # Initialize metrics
-                train_loss, train_loss_mini, train_loss_micro, train_metrics = 0, 0, 0, 0
+                train_loss, train_loss_mini, train_loss_micro, train_metrics = 0.0, 0.0, 0.0, 0.0
 
                 # Create progress bar for training loop
                 progress_bar = tqdm(enumerate(self.train_loader, start=1), total=dataset_len, desc=f"Epoch {epoch}/{self.epochs}")
@@ -190,13 +229,14 @@ class Trainer():
 
                         # Calculate loss
                         loss = self.criterion(preds, masks)
+
                         # Calculate metrics
                         if self.num_classes == 1:
-                            metrics_loss = self.metrics.get_loss(preds, masks, self.metrics_fn)
-                            metrics = self.metrics.get_coefficient(preds, masks, self.metrics_fn)
+                            metrics_loss = self.metrics.get_loss(preds, masks)
+                            metrics = self.metrics.get_coefficient(preds, masks)
                         else:
-                            metrics_loss = self._mean_over_classes(self.metrics.get_loss, preds, masks, self.metrics_fn)
-                            metrics = self._mean_over_classes(self.metrics.get_coefficient, preds, masks, self.metrics_fn)
+                            metrics_loss = self._mean_over_classes(self.metrics.get_loss, preds, masks)
+                            metrics = self._mean_over_classes(self.metrics.get_coefficient, preds, masks)
 
                     # Integrate loss and metrics
                     total_loss = loss + metrics_loss
@@ -204,7 +244,7 @@ class Trainer():
                     train_loss += loss_item
                     train_loss_mini += loss_item
                     train_loss_micro = loss_item
-                    train_metrics += metrics
+                    train_metrics += metrics.item()
 
                     # Scaler backward
                     self.scaler.scale(total_loss).backward()
@@ -213,14 +253,11 @@ class Trainer():
                     if i % self.accumulation_step == 0:
                         # Unscale: FP16 -> FP32
                         self.scaler.unscale_(self.optim)
-
                         # Prevent gradient exploding
                         nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-
                         # Gradient update
                         self.scaler.step(self.optim)
                         self.scaler.update()
-
                         # Initialize gradient to zero
                         self.optim.zero_grad(set_to_none=True)
 
@@ -261,6 +298,7 @@ class Trainer():
                 print(f"Epoch: {epoch}/{self.epochs}")
                 print(f"Train - Loss: {train_loss:.4f}, Metrics: {train_metrics:.4f}")
                 print(f"Valid - Loss: {valid_loss:.4f}, Metrics: {valid_metrics:.4f}")
+                print(f"Best validation metrics: {self.best_valid_metrics:.4f} at epoch {best_epoch}")
                 print(f"LR: {current_lr:.6f}, Best val metrics: {self.best_valid_metrics:.4f} (epoch {best_epoch})")
 
                 # Record training log
@@ -274,12 +312,13 @@ class Trainer():
                     valid_metrics,
                     current_lr
                 ]
-                writer.writerow({TRAINER_CONFIGS[i]: values[i] for i in range(len(TRAINER_CONFIGS))})
-                csv_file.flush()
 
+                # Log to csv
+                csv_writer.writerow({TRAINER_CONFIGS[i]: values[i] for i in range(len(TRAINER_CONFIGS))})
+                csv_file.flush()
                 # Log to tensorboard
                 for i in range(1, len(TRAINER_CONFIGS)):
-                    self.writer.add_scalar(TRAINER_CONFIGS[i], values[i], epoch)
+                    self.tensorboard.add_scalar(TRAINER_CONFIGS[i], values[i], epoch)
 
                 # Add sample images to tensorboard
                 if epoch % 5 == 0 and self.valid_loader:
@@ -291,30 +330,30 @@ class Trainer():
                         preds = self._get_activation(preds)
 
                     # Add images to tensorboard
-                    self.writer.add_images('Input', inputs, epoch)
-                    self.writer.add_images('Ground Truth', masks.unsqueeze(1), epoch)
-                    self.writer.add_images('Prediction', preds, epoch)
+                    self.tensorboard.add_images('Input', inputs, epoch)
+                    self.tensorboard.add_images('Ground Truth', masks, epoch)
+                    self.tensorboard.add_images('Prediction', preds, epoch)
 
                 # Checkpoint
                 if epoch % self.checkpoint_step == 0:
-                    self._save_model(self.checkpoint_path, f'epoch_{epoch}.pth')
+                    self._save_model(epoch, self.checkpoint_dir)
 
                 # Early stopping
                 if self.patience_counter >= self.early_stopping_patience:
                     print(f"Early stopping triggered after {epoch} epochs.")
-                    print(f"Best validation metrics: {self.best_val_metrics:.4f} at epoch {best_epoch}")
                     break
 
             # Test
-            test_loss, test_metrics = self.eval(self.test_loader)
-            print(f"Test - Loss: {test_loss:.4f}, Metrics: {test_metrics:.4f}")
-            print(f"Best validation metrics: {self.best_valid_metrics:.4f} at epoch {best_epoch}")
+            if self.test_loader:
+                test_loss, test_metrics = self.eval(self.test_loader)
+                print(f"Test - Loss: {test_loss:.4f}, Metrics: {test_metrics:.4f}")
 
             # Save best model
-            self._save_model(best_epoch)
+            self._save_model(best_epoch, self.best_model_dir)
             # Save last model
-            self._save_model(epoch)
+            self._save_model(epoch, self.model_dir)
 
             # Close tensorboard
             self.tensorboard.close()
+            print('Training completed.')
 
