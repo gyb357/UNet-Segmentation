@@ -1,32 +1,23 @@
 from . import *
 
 
-# Configuration of the decoder layers
-_UNET_CONFIGS = {
-    'shallow': { # resnet18,34
-        'conv_filters': [768, 384, 192, 128, 64],
-        'trans_filters': [512, 512, 256, 128, 64]
-    },
-    'deep': {    # resnet50,101,152
-        'conv_filters': [1536, 768, 384, 128, 64],
-        'trans_filters': [2048, 512, 256, 128, 64]
-    },
-    'default': {
-        'conv_filters': [1024, 512, 256, 128, 64],
-        'trans_filters': [1024, 512, 256, 128, 64]
-    }
+# Configuration of the encoder layers
+_UNET3PLUS_CONFIGS = {
+    'shallow': (64, 64, 128, 256, 512),    # resnet18,34
+    'deep':    (64, 256, 512, 1024, 2048), # resnet50,101,152
+    'default': (64, 128, 256, 512, 1024)
 }
 
 
-class UNet(nn.Module):
+class UNet3Plus(nn.Module):
     """
-    UNet implementation for image segmentation
+    UNet3+ implementation for image segmentation
     Supports ResNet backbone or standard UNet encoder,
     optional deep supervision and classification-guided module (CGM)
-    
-    https://arxiv.org/abs/1505.04597
+
+    https://arxiv.org/abs/2004.08790
     """
-    
+
     def __init__(
             self,
             channels: int,
@@ -56,21 +47,19 @@ class UNet(nn.Module):
             cgm (bool): Whether to use CGM(Classification-Guided Module)
         """
 
-        super(UNet, self).__init__()
+        super(UNet3Plus, self).__init__()
         # Attributes
         self.backbone = backbone
         self.deep_supervision = deep_supervision
         self.cgm = cgm
 
-        # Select decoder config based on backbone depth
-        self.backbone_depth = ternary_op_elif(
+        # Select encoder config based on backbone depth
+        base = ternary_op_elif(
             backbone in ['resnet18', 'resnet34'], 'shallow',
             backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
             'default'
         )
-        config = _UNET_CONFIGS[self.backbone_depth]
-        self.decoder_conv_filters = config['conv_filters']
-        self.decoder_trans_filters = config['trans_filters']
+        e1, e2, e3, e4, e5 = _UNET3PLUS_CONFIGS[base]
 
         # Encoder layers (with backbone)
         if backbone:
@@ -92,29 +81,29 @@ class UNet(nn.Module):
 
         # Encoder layers (without backbone)
         else:
-            self.e1 = EncoderBlock(channels, 64, bias, normalize, dropout)
-            self.e2 = EncoderBlock(64, 128, bias, normalize, dropout)
-            self.e3 = EncoderBlock(128, 256, bias, normalize, dropout)
-            self.e4 = EncoderBlock(256, 512, bias, normalize, dropout)
+            self.e1 = EncoderBlock(channels, e1, bias, normalize, dropout)
+            self.e2 = EncoderBlock(e1, e2, bias, normalize, dropout)
+            self.e3 = EncoderBlock(e2, e3, bias, normalize, dropout)
+            self.e4 = EncoderBlock(e3, e4, bias, normalize, dropout)
 
             # Center layer
-            self.e5 = DoubleConv2d(512, 1024, bias, normalize)
+            self.e5 = DoubleConv2d(e4, e5, bias, normalize)
 
         # Decoder layers
-        self.d1 = DecoderBlock(self.decoder_trans_filters[0], 512, self.decoder_conv_filters[0], 512, bias, normalize, dropout)
-        self.d2 = DecoderBlock(self.decoder_trans_filters[1], 256, self.decoder_conv_filters[1], 256, bias, normalize, dropout)
-        self.d3 = DecoderBlock(self.decoder_trans_filters[2], 128, self.decoder_conv_filters[2], 128, bias, normalize, dropout)
-        self.d4 = DecoderBlock(self.decoder_trans_filters[3], 64, self.decoder_conv_filters[3], 64, bias, normalize, dropout)
-        
+        self.d1 = DecoderBlock3Plus((e1, e2, e3, e4, e5), 64, bias, normalize, dropout) # d1: combine e1, e2, e3, e4, e5
+        self.d2 = DecoderBlock3Plus((e1, e2, e3, 64, e5), 64, bias, normalize, dropout) # d2: combine e1, e2, e3, d1, e5
+        self.d3 = DecoderBlock3Plus((e1, e2, 64, 64, e5), 64, bias, normalize, dropout) # d3: combine e1, e2, d2, d1, e5
+        self.d4 = DecoderBlock3Plus((e1, 64, 64, 64, e5), 64, bias, normalize, dropout) # d4: combine e1, d3, d2, d1, e5
+
         # Output layer
-        self.out = OutputBlock(self.decoder_conv_filters[4], 32, num_classes, backbone)
+        self.out = OutputBlock(64, 64, num_classes, backbone, bias)
 
         # Deep supervision
         if self.deep_supervision:
-            self.aux_convs = nn.ModuleList([
-                nn.Conv2d(self.decoder_conv_filters[i], num_classes, kernel_size=1, bias=bias)
-                for i in range(4)
-            ])
+            self.aux1 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+            self.aux2 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+            self.aux3 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+            self.aux4 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
 
         # Classification-Guided Module head
         if self.cgm:
@@ -155,16 +144,22 @@ class UNet(nn.Module):
             e4, p4 = self.e4(p3)
             e5 = self.e5(p4)
 
-        # Decoder forward pass
-        d1 = self.d1(e5, e4)
-        d2 = self.d2(d1, e3)
-        d3 = self.d3(d2, e2)
-        d4 = self.d4(d3, e1)
-
         # Apply CGM gating
         if self.cgm:
             probas = self.cgm_head(e5)
-            fg = probas[:, 1].view(-1, 1, 1, 1) # foreground probability
+            fg = probas[:, 1].view(-1, 1, 1, 1)
+
+        # Decoder forward
+        sz4 = e4.shape[-2:]
+        d1 = self.d1((e1, e2, e3, e4, e5), sz4)
+        sz3 = e3.shape[-2:]
+        d2 = self.d2((e1, e2, e3, d1, e5), sz3)
+        sz2 = e2.shape[-2:]
+        d3 = self.d3((e1, e2, d2, d1, e5), sz2)
+        sz1 = e1.shape[-2:]
+        d4 = self.d4((e1, d3, d2, d1, e5), sz1)
+
+        if self.cgm:
             d4 = d4 * fg
 
         # Output layer forward pass
@@ -173,13 +168,10 @@ class UNet(nn.Module):
         # Deep supervision outputs
         if self.deep_supervision and self.training:
             size = x.shape[2:]
-            auxs = []
-            for i, feat in enumerate([d1, d2, d3, d4]):
-                aux = F.interpolate(
-                    self.aux_convs[i](feat),
-                    size=size, mode='bilinear', align_corners=True
-                )
-                auxs.append(aux)
-            return (out, *auxs)
+            aux1 = F.interpolate(self.aux1(d1), size=size, mode='bilinear', align_corners=True)
+            aux2 = F.interpolate(self.aux2(d2), size=size, mode='bilinear', align_corners=True)
+            aux3 = F.interpolate(self.aux3(d3), size=size, mode='bilinear', align_corners=True)
+            aux4 = F.interpolate(self.aux4(d4), size=size, mode='bilinear', align_corners=True)
+            return out, aux1, aux2, aux3, aux4
         return out
 

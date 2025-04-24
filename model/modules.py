@@ -1,12 +1,9 @@
-import torch.nn as nn
-import torch
-from typing import Optional, Callable, Tuple
-from torch import Tensor
+from . import *
 
 
 class DoubleConv2d(nn.Module):
     """
-    Double convolutional block with normalization and ReLU activation.
+    Double convolutional block with normalization and ReLU activation
     
     Structure
     ---------
@@ -50,7 +47,7 @@ class DoubleConv2d(nn.Module):
 
 class EncoderBlock(nn.Module):
     """
-    Encoder block with double convolutional layer and max pooling.
+    Encoder block with double convolutional layer and max pooling
     
     Structure
     ---------
@@ -90,8 +87,8 @@ class EncoderBlock(nn.Module):
 
 class DecoderBlock(nn.Module):
     """
-    Decoder block with transposed convolutional layer and double convolutional layer.
-    Concatenates the input from the encoder block.
+    Decoder block with transposed convolutional layer and double convolutional layer
+    Concatenates the input from the encoder block
 
     Structure
     ---------
@@ -128,15 +125,103 @@ class DecoderBlock(nn.Module):
 
     def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         x = self.trans(x1)
+
+        assert x.shape[2:] == x2.shape[2:], f"Skip connection size {x2.shape[2:]} doesn't match upsampled size {x1.shape[2:]}."
+
         x = self.conv(torch.cat([x, x2], dim=1))
         x = self.drop(x)
         return x
 
 
+class DecoderBlock3Plus(nn.Module):
+    """
+    Decoder block with UNet3+ source features
+
+    Structure
+    ---------
+     | ↓ Conv2d (1x1)
+     | ↓ DoubleConv2d
+     | ↓ Dropout
+    """
+
+    def __init__(
+        self,
+        in_channels_list: Tuple[int, int, int, int, int],
+        mid_channels: int,
+        bias: bool = False,
+        normalize: Optional[Type[nn.Module]] = nn.BatchNorm2d,
+        dropout: float = 0.0
+    ) -> None:
+        """
+        Args:
+            in_channels_list (tuple): List of input channels for each source feature
+            mid_channels (int): Number of middle channels
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout (float): Dropout probability
+        """
+
+        super(DecoderBlock3Plus, self).__init__()
+        self.conv = nn.ModuleList([
+            nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
+            for in_channels in in_channels_list
+        ])
+        self.fusion = DoubleConv2d(mid_channels * len(in_channels_list), mid_channels, bias, normalize)
+        self.dropout = nn.Dropout(dropout)
+
+    def _rescale(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
+        x_h, x_w = x.shape[2:]
+        y_h, y_w = y
+
+        # Downsample if larger
+        if x_h > y_h and x_w > y_w:
+            return F.adaptive_max_pool2d(x, (y_h, y_w))
+        # Upsample if smaller
+        return F.interpolate(x, size=y, mode='bilinear', align_corners=False)
+    
+    def forward(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
+        aligned = [
+            conv(self._rescale(feat, y))
+            for conv, feat in zip(self.conv, x)
+        ]
+        fused = self.fusion(torch.cat(aligned, dim=1))
+        return self.dropout(fused)
+
+
+class CGMHead(nn.Module):
+    """
+    Classification-Guided Module (CGM) head for classification tasks
+    Applies a 1x1 convolution followed by adaptive average pooling and softmax activation
+
+    Structure
+    ---------
+     | ↓ Conv2d (1x1)
+     | ↓ AdaptiveAvgPool2d (1x1)
+     | ↓ Flatten
+     | ↓ Softmax
+    """
+    def __init__(
+            self,
+            in_channels: int,
+            bias: bool = False
+    ) -> None:
+        super(CGMHead, self).__init__()
+        self.layers = nn.Sequential(
+            # nn.Dropout(0.5),
+            nn.Conv2d(in_channels, 2, kernel_size=1, bias=bias),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Softmax(dim=1) # nn.Sigmoid()
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.layers(x)
+
+
 class OutputBlock(nn.Module):
     """
-    Output block with transposed convolutional layer and convolutional layer.
-    If backbone is not provided, the block only contains a convolutional layer.
+    Output block with transposed convolutional layer and convolutional layer
+    If backbone is not provided, the block only contains a convolutional layer
     
     Structure
     ---------

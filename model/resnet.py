@@ -1,7 +1,4 @@
-import torch.nn as nn
-import torch
-from typing import Optional, Callable, Type, Union, List
-from torch import Tensor
+from . import *
 
 
 def conv1x1_layer(
@@ -11,7 +8,7 @@ def conv1x1_layer(
         bias: bool = False
 ) -> nn.Conv2d:
     """
-    1x1 convolutional layer.
+    1x1 convolutional layer
 
     Args:
         in_channels (int): Number of input channels
@@ -30,7 +27,7 @@ def conv3x3_layer(
         bias: bool = False
 ) -> nn.Conv2d:
     """
-    3x3 convolutional layer.
+    3x3 convolutional layer
     
     Args:
         in_channels (int): Number of input channels
@@ -44,7 +41,7 @@ def conv3x3_layer(
 
 class Bottleneck2Conv(nn.Module):
     """
-    Bottleneck block with two convolutional (3x3, 3x3) layers.
+    Bottleneck block with two convolutional (3x3, 3x3) layers
     
     Structure
     ---------
@@ -101,7 +98,7 @@ class Bottleneck2Conv(nn.Module):
 
 class Bottleneck3Conv(nn.Module):
     """
-    Bottleneck block with three convolutional (1x1, 3x3, 1x1) layers.
+    Bottleneck block with three convolutional (1x1, 3x3, 1x1) layers
 
     Structure
     ---------
@@ -166,7 +163,7 @@ class Bottleneck3Conv(nn.Module):
 
 class ResNet(nn.Module):
     """
-    ResNet model with bottleneck blocks.
+    ResNet model with bottleneck blocks
     
     Structure
     ---------
@@ -262,7 +259,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, Bottleneck2Conv):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _get_parameter_count(self) -> int:
+    def _get_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
     def forward(self, x: Tensor) -> Tensor:
@@ -304,7 +301,7 @@ def resnet(
         zero_init_residual: bool = False,
 ) -> ResNet:
     """
-    Create a ResNet model.
+    Create a ResNet model
     
     Args:
         name (str): Name of the ResNet model (`resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`)
@@ -321,6 +318,8 @@ def resnet(
     
     bottleneck, layers = RESNET_CONFIGS[name]
     resnet = ResNet(bottleneck, layers, channels, num_classes, bias, init_weights, zero_init_residual)
+    parameters = resnet._get_parameters()
+    print(f"ResNet Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
 
     if pretrained:
         try:

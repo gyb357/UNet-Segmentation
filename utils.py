@@ -8,8 +8,6 @@ from torch import Tensor
 @staticmethod
 def ternary_op(a: bool, b: Any, c: Any) -> Any:
     """
-    Ternary operator implementation.
-
     Args:
         a (bool): Condition to check
         b (Any): Value to return if condition is `True`
@@ -21,8 +19,6 @@ def ternary_op(a: bool, b: Any, c: Any) -> Any:
 @staticmethod
 def ternary_op_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
     """
-    Ternary operator with `elif` implementation.
-    
     Args:
         a (bool): Condition to check
         b (Any): Value to return if condition is `True`
@@ -36,8 +32,6 @@ def ternary_op_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
 @staticmethod
 def load_config(path: str) -> Dict[str, Any]:
     """
-    Load a YAML configuration file.
-
     Args:
         path (str): Path to the configuration file.
     """
@@ -55,8 +49,6 @@ def load_config(path: str) -> Dict[str, Any]:
 @staticmethod
 def tensor2numpy(tensor: Tensor) -> np.float32:
     """
-    Convert a PyTorch tensor to a NumPy array.
-    
     Args:
         tensor (Tensor): Input tensor.
     """

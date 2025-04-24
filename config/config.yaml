@@ -1,70 +1,73 @@
-# Main tasks
-tasks:
+# Task
+task:
   train: true
   test: false
 
 # Model
 model:
-  channels: 3                 # Number of input channels
-  num_classes: 1             # Number of output classes
-  backbone: null             # Backbone architecture (e.g., resnet18, resnet34, resnet50, resnet101, resnet152)
-  pretrained: null          # Pretrained model path
-  freeze_backbone: false    # Whether to freeze backbone weights
-  bias: false              # Whether to use bias in convolutional layers
-  normalize: null        # Normalization layer to use (default: nn.BatchNorm2d)
-  dropout: 0.5             # Dropout probability
-  init_weights: false     # Whether to initialize weights
+  name: 'unet'                          # Model name (e.g., 'unet', 'unet3plus'), unet2plus is not supported yet
+  channels: 3                           # Number of input channels
+  num_classes: 1                        # Number of output classes
+  backbone: ''                          # Backbone architecture for encoder ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
+  pretrained: ''                        # Pretrained model path ('model/pretrained/...')
+  freeze_backbone: false                # Whether to freeze backbone weights
+  bias: false                           # Whether to use bias in convolutional layers
+  normalize: null                       # Normalization layer to use (default: `nn.BatchNorm2d`)
+  dropout: 0.0                          # Dropout probability
+  init_weights: true                    # Whether to initialize weights
+  deep_supervision: False               # Whether to use deep supervision
+  cgm: False                            # Whether to use CGM(Classification-Guided Module)
 
+# MaskDatasetGenerator
 mask_dataset:
-  # Leave 'label_path' or 'mask_path' empty if not used
-  label_path: ""               # Path to the directory containing label files
-  mask_path: ""                # Path where mask images will be saved
-  mask_size: [256, 256]        # Size of the output mask (width, height)
-  mask_extension: ".jpg"       # File extension for saved masks (e.g., .jpg, .png)
-  mask_fill: 255               # Pixel value for the foreground (255 for white)
+  label_dir: "dataset/label"            # Path to directory containing label files
+  mask_dir: "dataset/mask"              # Path to directory to save masks
+  mask_size: [320, 320]                 # Size of mask to generate
+  mask_extension: ".jpg"                # Extension of mask files
+  mask_fill: 255                        # Value to fill mask with (default: 255)
 
 # Augmentation
 augmentation:
-  resize: [256, 256]           # Optional tuple for resizing (width, height)
-  hflip: true                  # Whether to apply horizontal flip
-  vflip: true                  # Whether to apply vertical flip
-  rotate: 45.0                 # Maximum rotation angle (random angle between -rotate and +rotate)
-  saturation: 0.2              # Maximum saturation adjustment factor
-  brightness: 0.2              # Maximum brightness adjustment factor
-  factor: 1.0                  # Global adjustment scale factor
-  p: 0.5                       # Probability of applying each augmentation
+  channels: 3                           # Number of channels in image
+  resize: [320, 320]                    # Resize dimensions (default: None)
+  hflip: False                          # Whether to flip horizontally (default: False)
+  vflip: False                          # Whether to flip vertically (default: False)
+  rotate: 0.0                           # Rotation angle (default: 0.0)
+  saturation: 0.0                       # Saturation factor (default: 0.0)
+  brightness: 0.0                       # Brightness factor (default: 0.0)
+  factor: 1.0                           # Factor for brightness and saturation (default: 1.0)
+  p: 0.5                                # Probability of applying transformations (default: 0.5)
 
 # SegmentationDataset
 segmentation_dataset:
-  image_path: "dataset/image" # Directory containing input images
-  mask_path: "dataset/mask"   # Directory containing corresponding mask images
-  extension: ".jpg"            # File extension for the images and masks (e.g., .jpg, .png)
-  num_images: 0                # Maximum number of images to use (0 means use all)
-  augmentation: true           # Whether to apply augmentations or not
+  image_dir: "dataset/image"            # Path to directory containing images
+  mask_dir: "dataset/mask"              # Path to directory containing masks
+  extension: ".jpg"                     # Extension of image and mask files
+  num_images: 0                         # Maximum number of images to load (default: 0)
+  augmentation: true                    # Augmentation to apply (default: None)
 
 # SegmentationDataLoader
-segmentation_dataloader:
-  batch_size: 8                # Batch size for data loading
-  shuffle: true                # Whether to shuffle the data
-  num_workers: 4               # Number of worker processes for data loading
-  pin_memory: false            # Whether to pin memory for faster GPU transfer
-  dataset_split:
-    train: 0.8                 # Fraction of the data to be used for training
-    val: 0.1                   # Fraction of the data to be used for validation
-    test: 0.1                  # Fraction of the data to be used for testing
-  seed: 42                     # Random seed for reproducibility
+segmentation_dataLoader:
+  split:                                # Split proportions for train, valid, and test sets (default: {'train': 0.8, 'valid': 0.1, 'test': 0.1})
+    train: 0.8
+    valid: 0.1
+    test: 0.1
+  batch_size: 8                         # Batch size (default: 8)
+  shuffle: true                         # Whether to shuffle the dataset (default: True)
+  num_workers: 0                        # Number of worker threads (default: 0)
+  pin_memory: true                      # Whether to use pin memory (default: True)
+  seed: 42                              # Random seed (default: 42)
 
-# Trainer
 trainer:
-  lr: 0.0001                    # Learning rate for the optimizer
-  loss: "BCEWithLogitsLoss"    # Loss function
-  loss_coefficient:
-    loss: 1.0                  # Coefficient for the loss function
-    metric: 1.0                # Coefficient for the metric
-  epochs: 100                   # Number of epochs to train the model
-  accumulation_step: 1         # Number of steps to accumulate gradients
-  checkpoint_step: 10           # Number of epochs to save model checkpoint
-  show_time: 1                 # Number of steps to show sample images
-  early_stopping_patience: 10   # Number of epochs to wait before early stopping
-  mixed_precision: false       # Whether to use mixed precision training
-  weight_decay: 0.0            # Weight decay for the optimizer
+  device: 'cuda'                        # Device to run the model on ('cuda' or 'cpu')
+  loss_fn: 'BCEWithLogitsLoss'          # Loss function ('BCEWithLogitsLoss' or 'CrossEntropyLoss')
+  metrics_fn: 'dice'                    # Metrics function ('dice' or 'iou')
+  num_classes: 1                        # Number of classes
+  lr: 0.0001                            # Learning rate (default: 1e-4)
+  weight_decay: 0.0                     # Weight decay (default: 0.0)
+  mixed_precision: true                 # Whether to use mixed precision (default: False)
+  epochs: 100                           # Number of epochs (default: 100)
+  accumulation_step: 1                  # Number of steps to accumulate gradients (default: 1)
+  checkpoint_step: 10                   # Number of epochs to save checkpoint (default: 10)
+  early_stopping_patience: 10           # Number of epochs to wait before early stopping (default: 10)
+

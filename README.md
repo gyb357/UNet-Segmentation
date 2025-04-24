@@ -6,7 +6,7 @@
      
 2. [Architecture Overview](#Architecture-Overview)
      * UNet
-     * UNet++
+     * UNet2+
      * UNet3+
 
 3. [Model Comparison](#Model-Comparison)
@@ -41,7 +41,7 @@ This project focuses on implementing and comparing various UNet architectures, i
 ## UNet
 The classic UNet architecture features a symmetric encoder-decoder structure with skip connections, allowing it to capture contextual information while preserving spatial details. This design makes UNet effective for general biomedical image segmentation tasks. The encoder progressively reduces spatial dimensions while extracting high-level features, and the decoder restores the original resolution using upsampling layers. Skip connections directly transfer fine-grained spatial information from the encoder to the decoder, helping to recover precise segmentation boundaries.
 
-## UNet++
+## UNet2+
 UNet++ redesigns the skip connections with a nested dense structure, effectively bridging the semantic gap between encoder and decoder features. This design introduces convolutional layers within the skip pathways, progressively refining features before passing them to the decoder. Additionally, UNet++ enabling more effective gradient propagation and improving segmentation accuracy.
 
 ## UNet3+
@@ -50,7 +50,7 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
  > [!Note]
  > For more information, see the corresponding arxiv paper.
  > - [UNet arxiv paper](https://arxiv.org/abs/1505.04597)
- > - [UNet++ arxiv paper](https://arxiv.org/abs/1807.10165)
+ > - [UNet2+ arxiv paper](https://arxiv.org/abs/1807.10165)
  > - [UNet3+ arxiv paper](https://arxiv.org/abs/2004.08790)
 
 
@@ -66,11 +66,25 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 | Model Architecture | Backbone  | Number of Parameters |
 |--------------------|-----------|----------------------|
 | UNet              | -         | 31.04M              |
-| ResUNet18         | ResNet18  | 20.78M              |
-| ResUNet34         | ResNet34  | 30.89M              |
-| ResUNet50         | ResNet50  | 40.90M              |
-| ResUNet101        | ResNet101 | 59.89M              |
-| ResUNet152        | ResNet152 | 75.54M              |
+| Res18UNet         | ResNet18  | 20.78M              |
+| Res34UNet         | ResNet34  | 30.89M              |
+| Res50UNet         | ResNet50  | 40.90M              |
+| Res101UNet        | ResNet101 | 59.89M              |
+| Res152UNet        | ResNet152 | 75.54M              |
+
+## UNet2+
+Not yet implemented.
+
+## UNet3+
+
+| Model Architecture | Backbone  | Number of Parameters |
+|--------------------|-----------|----------------------|
+| UNet3+              | -         | 20.13M              |
+| Res18UNet3+         | ResNet18  | 12.30M              |
+| Res34UNet3+         | ResNet34  | 22.40M              |
+| Res50UNet3+         | ResNet50  | 25.16M              |
+| Res101UNet3+        | ResNet101 | 44.15M              |
+| Res152UNet3+        | ResNet152 | 59.79M              |
 
 ## ResNet
 

@@ -2,152 +2,82 @@ import torch
 from torch import Tensor
 
 
-def miou_coefficient(
-        outputs: Tensor,
-        masks: Tensor,
-        num_classes: int,
-        smooth: float = 1e-6,
-        threshold: float = 0.5
-) -> float:
-    """
-    Compute the mean IoU (Intersection over Union) for a batch of predictions.
+class Loss():
+    def __init__(
+            self,
+            num_classes: int,
+            method: str,
+            threshold: float = 0.5,
+            epsilon: float = 1e-6,
+    ) -> None:
+        """
+        Args:
+            num_classes (int): The number of classes
+            method (str): The method to compute the coefficient ('dice' or 'iou')
+            threshold (float): The threshold value (default: 0.5)
+            epsilon (float): The epsilon value (default: 1e-6)
+        """
 
-    Formula
-    -------
-       IoU = TP / (TP + FP + FN)
-     - TP: True positive
-     - FP: False positive
-     - FN: False negative
+        # Attributes
+        self.num_classes = num_classes
+        self.method = method
+        self.threshold = threshold
+        self.epsilon = epsilon
+        self.activation = torch.sigmoid if num_classes == 1 else lambda x: torch.softmax(x, dim=1)
 
-    Args:
-        outputs (Tensor): Predicted mask tensor
-        masks (Tensor): Ground truth mask tensor
-        num_classes (int): Number of classes
-        smooth (float): Smoothing factor to avoid division by zero
-        threshold (float): Threshold value for binarization
-    """
+    def get_coefficient(self, preds: Tensor, masks: Tensor) -> Tensor:
+        """
+        Args:
+            preds (Tensor): The predicted outputs
+            masks (Tensor): The ground truth masks
+        """
 
-    # Apply the activation function for binary or multi-class segmentation
-    if num_classes == 1:
-        outputs = torch.sigmoid(outputs)
-    else:
-        outputs = torch.softmax(outputs, dim=1)
+        # Activation function
+        preds = self.activation(preds)
 
-    # Binarize outputs and masks for each class
-    iou_list = []
-    for i in range(num_classes):
-        if num_classes > 1:
-            output_class = (outputs[:, i] > threshold).float()
-            mask_class = (masks[:, i] > threshold).float()
-        else:
-            output_class = (outputs > threshold).float()
-            mask_class = (masks > threshold).float()
+        # Binarize
+        coefs = []
+        for c in range(self.num_classes):
+            # Flatten per-class predictions and masks
+            if self.num_classes > 1:
+                pred_c = preds[:, c].view(-1)
+                mask_c = masks[:, c].view(-1)
+            else:
+                pred_c = preds.view(-1)
+                mask_c = masks.view(-1)
 
-        # Flatten the tensors
-        output_flat = output_class.view(-1)
-        mask_flat = mask_class.view(-1)
+            # Binarize
+            pred_bin = (pred_c > self.threshold)
+            mask_bin = (mask_c > self.threshold)
 
-        # Intersection and union
-        intersection = torch.logical_and(output_flat, mask_flat).sum().float()
-        union = torch.logical_or(output_flat, mask_flat).sum().float()
-        iou = (intersection + smooth)/(union + smooth)
+            # Intersection and Union
+            tp = (pred_bin & mask_bin).sum().float()
+            pred_sum = pred_bin.sum().float()
+            mask_sum = mask_bin.sum().float()
 
-        iou_list.append(iou)
-    return torch.mean(torch.tensor(iou_list)).item()
+            # Compute coefficient
+            if self.method == 'iou':
+                union = pred_sum + mask_sum - tp
+                coef = (tp + self.epsilon) / (union + self.epsilon)
+            elif self.method == 'dice':
+                denom = pred_sum + mask_sum
+                coef = (2 * tp + self.epsilon) / (denom + self.epsilon)
+            else:
+                raise ValueError(f"Unknown method '{self.method}', choose 'dice' or 'iou'.")
+            
+            coefs.append(coef)
+        return torch.stack(coefs).mean()
+    
+    def get_loss(self, preds: Tensor, masks: Tensor) -> Tensor:
+        """
+        Args:
+            preds (Tensor): The predicted outputs
+            masks (Tensor): The ground truth masks
+        """
 
+        # Get coefficient
+        coef = self.get_coefficient(preds, masks)
 
-def dice_coefficient(
-        outputs: Tensor,
-        masks: Tensor,
-        num_classes: int,
-        smooth: float = 1e-6,
-        threshold: float = 0.5
-) -> float:
-    """
-    Compute the Dice coefficient for a batch of predictions.
-
-    Formula
-    -------
-       Dice = (2 * TP) / (2 * TP + FP + FN)
-     - TP: True positive
-     - FP: False positive
-     - FN: False negative
-
-    Args:
-        outputs (Tensor): Predicted mask tensor
-        masks (Tensor): Ground truth mask tensor
-        num_classes (int): Number of classes
-        smooth (float): Smoothing factor to avoid division by zero
-        threshold (float): Threshold value for binarization
-    """
-
-    # Apply the activation function for binary or multi-class segmentation
-    if num_classes == 1:
-        outputs = torch.sigmoid(outputs)
-    else:
-        outputs = torch.softmax(outputs, dim=1)
-
-    # Binarize outputs and masks for each class
-    dice_list = []
-    for i in range(num_classes):
-        if num_classes > 1:
-            output_class = (outputs[:, i] > threshold).float()
-            mask_class = (masks[:, i] > threshold).float()
-        else:
-            output_class = (outputs > threshold).float()
-            mask_class = (masks > threshold).float()
-
-        # Flatten the tensors
-        output_flat = output_class.view(-1)
-        mask_flat = mask_class.view(-1)
-
-        # Intersection and dice
-        intersection = torch.logical_and(output_flat, mask_flat).sum().float()
-        sum_output_mask = output_flat.sum() + mask_flat.sum()
-        dice = (2*intersection + smooth)/(sum_output_mask + smooth)
-
-        dice_list.append(dice)
-    return torch.mean(torch.tensor(dice_list)).item()
-
-
-def miou_loss(
-        outputs: Tensor,
-        masks: Tensor,
-        num_classes: int,
-        smooth: float = 1e-6,
-        threshold: float = 0.5
-) -> Tensor:
-    """
-    Compute the mean IoU (Intersection over Union) loss for a batch of predictions.
-
-    Args:
-        outputs (Tensor): Predicted mask tensor
-        masks (Tensor): Ground truth mask tensor
-        num_classes (int): Number of classes
-        smooth (float): Smoothing factor to avoid division by zero
-        threshold (float): Threshold value for binarization
-    """
-
-    return 1.0 - miou_coefficient(outputs, masks, num_classes, smooth, threshold)
-
-
-def dice_loss(
-        outputs: Tensor,
-        masks: Tensor,
-        num_classes: int,
-        smooth: float = 1e-6,
-        threshold: float = 0.5
-) -> Tensor:
-    """
-    Compute the Dice loss for a batch of predictions.
-
-    Args:
-        outputs (Tensor): Predicted mask tensor
-        masks (Tensor): Ground truth mask tensor
-        num_classes (int): Number of classes
-        smooth (float): Smoothing factor to avoid division by zero
-        threshold (float): Threshold value for binarization
-    """
-
-    return 1.0 - dice_coefficient(outputs, masks, num_classes, smooth, threshold)
+        # Compute loss
+        return 1.0 - coef
 
