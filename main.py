@@ -33,8 +33,8 @@ if __name__ == '__main__':
 
         if mask_dataset_label_path != '' or mask_dataset_mask_path != '':
             mask_dataset_generator = MaskDatasetGenerator(
-                label_path=mask_dataset_label_path,
-                mask_path=mask_dataset_mask_path,
+                label_dir=mask_dataset_label_path,
+                mask_dir=mask_dataset_mask_path,
                 mask_size=config_mask_dataset['mask_size'],
                 mask_extension=config_mask_dataset['mask_extension'],
                 mask_fill=config_mask_dataset['mask_fill']
@@ -56,8 +56,8 @@ if __name__ == '__main__':
 
         config_segmentation_dataset = config['segmentation_dataset']
         segmentation_dataset = SegmentationDataset(
-            image_path=config_segmentation_dataset['image_path'],
-            mask_path=config_segmentation_dataset['mask_path'],
+            image_dir=config_segmentation_dataset['image_path'],
+            mask_dir=config_segmentation_dataset['mask_path'],
             extension=config_segmentation_dataset['extension'],
             num_images=config_segmentation_dataset['num_images'],
             augmentation=augmentation
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         config_segmentation_dataloader = config['segmentation_dataloader']
         segmentation_dataloader = SegmentationDataLoader(
             dataset=segmentation_dataset,
-            dataset_split=config_segmentation_dataloader['dataset_split'],
+            split=config_segmentation_dataloader['dataset_split'],
             batch_size=config_segmentation_dataloader['batch_size'],
             shuffle=config_segmentation_dataloader['shuffle'],
             num_workers=config_segmentation_dataloader['num_workers'],
@@ -84,27 +84,18 @@ if __name__ == '__main__':
         
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         trainer = Trainer(
-            model=model,
-            dataloader=segmentation_dataloader.get_loader(),
-            lr=config_trainer['lr'],
-            loss=loss_func,
-            loss_coefficient=config_trainer['loss_coefficient'],
             device=device,
-            epochs=config_trainer['epochs'],
-            accumulation_step=config_trainer['accumulation_step'],
-            checkpoint_step=config_trainer['checkpoint_step'],
-            show_time=config_trainer['show_time'],
+            model=model,
+            loss_fn=loss_func,
+            metrics_fn='dice',
             num_classes=config_model['num_classes'],
-            early_stopping_patience=config_trainer['early_stopping_patience'],
+            dataloader=segmentation_dataloader.get_loaders(),
+            lr=config_trainer['lr'],
+            weight_decay=config_trainer['weight_decay'],
             mixed_precision=config_trainer['mixed_precision'],
-            weight_decay=config_trainer['weight_decay']
+            epochs=config_trainer['epochs']
         )
-        trainer.fit(
-            csv_path='csv/',
-            csv_name='train_log.csv',
-            checkpoint_path='model/checkpoint',
-            model_path='model'
-        )
+        trainer.fit()
 
     if config_task['test']:
         pass

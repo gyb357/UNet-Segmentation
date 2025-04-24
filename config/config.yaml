@@ -19,13 +19,13 @@ mask_dataset:
   # Leave 'label_path' or 'mask_path' empty if not used
   label_path: ""               # Path to the directory containing label files
   mask_path: ""                # Path where mask images will be saved
-  mask_size: [256, 256]        # Size of the output mask (width, height)
+  mask_size: [320, 320]        # Size of the output mask (width, height)
   mask_extension: ".jpg"       # File extension for saved masks (e.g., .jpg, .png)
   mask_fill: 255               # Pixel value for the foreground (255 for white)
 
 # Augmentation
 augmentation:
-  resize: [256, 256]           # Optional tuple for resizing (width, height)
+  resize: [320, 320]           # Optional tuple for resizing (width, height)
   hflip: true                  # Whether to apply horizontal flip
   vflip: true                  # Whether to apply vertical flip
   rotate: 45.0                 # Maximum rotation angle (random angle between -rotate and +rotate)
@@ -50,7 +50,7 @@ segmentation_dataloader:
   pin_memory: false            # Whether to pin memory for faster GPU transfer
   dataset_split:
     train: 0.8                 # Fraction of the data to be used for training
-    val: 0.1                   # Fraction of the data to be used for validation
+    valid: 0.1                   # Fraction of the data to be used for validation
     test: 0.1                  # Fraction of the data to be used for testing
   seed: 42                     # Random seed for reproducibility
 
