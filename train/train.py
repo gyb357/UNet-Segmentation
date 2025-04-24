@@ -96,7 +96,7 @@ class Trainer():
         # Tensorboard
         self.tensorboard = SummaryWriter()
         # Paths
-        self.model_dir = './model'
+        self.model_dir = './final_model'
         self.log_dir = './log'
         self.checkpoint_dir = './checkpoint'
         self.best_model_dir = './best_model'

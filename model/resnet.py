@@ -259,7 +259,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, Bottleneck2Conv):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _get_parameter_count(self) -> int:
+    def _get_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
     def forward(self, x: Tensor) -> Tensor:
@@ -318,6 +318,8 @@ def resnet(
     
     bottleneck, layers = RESNET_CONFIGS[name]
     resnet = ResNet(bottleneck, layers, channels, num_classes, bias, init_weights, zero_init_residual)
+    parameters = resnet._get_parameters()
+    print(f"ResNet Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
 
     if pretrained:
         try:
