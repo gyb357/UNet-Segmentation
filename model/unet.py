@@ -3,11 +3,11 @@ from . import *
 
 # Configuration of the decoder layers
 _UNET_CONFIGS = {
-    'shallow': {
+    'shallow': { # resnet18,34
         'conv_filters': [768, 384, 192, 128, 64],
         'trans_filters': [512, 512, 256, 128, 64]
     },
-    'deep': {
+    'deep': {    # resnet50,101,152
         'conv_filters': [1536, 768, 384, 128, 64],
         'trans_filters': [2048, 512, 256, 128, 64]
     },

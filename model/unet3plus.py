@@ -1,12 +1,11 @@
 from . import *
 
 
-# Configuration of the decoder layers
+# Configuration of the encoder layers
 _UNET3PLUS_CONFIGS = {
-    'd1': (64, 128, 256, 512, 1024),
-    'd2': (64, 128, 256, 64, 1024),
-    'd3': (64, 128, 64, 64, 1024),
-    'd4': (64, 64, 64, 64, 1024)
+    'shallow': (64, 64, 128, 256, 512),    # resnet18,34
+    'deep':    (64, 256, 512, 1024, 2048), # resnet50,101,152
+    'default': (64, 128, 256, 512, 1024)
 }
 
 
@@ -54,6 +53,14 @@ class UNet3Plus(nn.Module):
         self.deep_supervision = deep_supervision
         self.cgm = cgm
 
+        # Select encoder config based on backbone depth
+        base = ternary_op_elif(
+            backbone in ['resnet18', 'resnet34'], 'shallow',
+            backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
+            'default'
+        )
+        e1, e2, e3, e4, e5 = _UNET3PLUS_CONFIGS[base]
+
         # Encoder layers (with backbone)
         if backbone:
             encoder_layers = list(resnet(backbone, pretrained, channels).children())
@@ -74,19 +81,19 @@ class UNet3Plus(nn.Module):
 
         # Encoder layers (without backbone)
         else:
-            self.e1 = EncoderBlock(channels, 64, bias, normalize, dropout)
-            self.e2 = EncoderBlock(64, 128, bias, normalize, dropout)
-            self.e3 = EncoderBlock(128, 256, bias, normalize, dropout)
-            self.e4 = EncoderBlock(256, 512, bias, normalize, dropout)
+            self.e1 = EncoderBlock(channels, e1, bias, normalize, dropout)
+            self.e2 = EncoderBlock(e1, e2, bias, normalize, dropout)
+            self.e3 = EncoderBlock(e2, e3, bias, normalize, dropout)
+            self.e4 = EncoderBlock(e3, e4, bias, normalize, dropout)
 
             # Center layer
-            self.e5 = DoubleConv2d(512, 1024, bias, normalize)
-        
-        # Decoder
-        self.d1 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d1'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
-        self.d2 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d2'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
-        self.d3 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d3'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
-        self.d4 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d4'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
+            self.e5 = DoubleConv2d(e4, e5, bias, normalize)
+
+        # Decoder layers
+        self.d1 = DecoderBlock3Plus((e1, e2, e3, e4, e5), 64, bias, normalize, dropout) # d1: combine e1, e2, e3, e4, e5
+        self.d2 = DecoderBlock3Plus((e1, e2, e3, 64, e5), 64, bias, normalize, dropout) # d2: combine e1, e2, e3, d1, e5
+        self.d3 = DecoderBlock3Plus((e1, e2, 64, 64, e5), 64, bias, normalize, dropout) # d3: combine e1, e2, d2, d1, e5
+        self.d4 = DecoderBlock3Plus((e1, 64, 64, 64, e5), 64, bias, normalize, dropout) # d4: combine e1, d3, d2, d1, e5
 
         # Output layer
         self.out = OutputBlock(64, 64, num_classes, backbone, bias)
@@ -123,7 +130,7 @@ class UNet3Plus(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
     def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]]:
-        # Encoder
+        # Encoder forward pass
         if self.backbone:
             e1 = self.e1(x)
             e2 = self.e2(e1)
@@ -140,9 +147,9 @@ class UNet3Plus(nn.Module):
         # Apply CGM gating
         if self.cgm:
             probas = self.cgm_head(e5)
-            fg = probas[:, 1].view(-1, 1, 1, 1) # foreground probability
+            fg = probas[:, 1].view(-1, 1, 1, 1)
 
-        # Decoder
+        # Decoder forward
         sz4 = e4.shape[-2:]
         d1 = self.d1((e1, e2, e3, e4, e5), sz4)
         sz3 = e3.shape[-2:]
@@ -152,7 +159,6 @@ class UNet3Plus(nn.Module):
         sz1 = e1.shape[-2:]
         d4 = self.d4((e1, d3, d2, d1, e5), sz1)
 
-        # CGM gating
         if self.cgm:
             d4 = d4 * fg
 

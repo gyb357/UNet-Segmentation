@@ -44,8 +44,7 @@ if __name__ == "__main__":
             cgm=cfg_model["cgm"]
         )
         parameters = model._get_parameters()
-        print(f"model parameters: {parameters}, ({parameters / 1e6:.2f} M)")
-
+        print(f"Total Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
 
     # MaskDatasetGenerator
     if task_train:
@@ -75,7 +74,6 @@ if __name__ == "__main__":
             cfg_augmentation["p"],
         )
 
-
         # SegmentationDataset
         cfg_dataset = cfg["segmentation_dataset"]
         dataset = SegmentationDataset(
@@ -85,7 +83,6 @@ if __name__ == "__main__":
             cfg_dataset["num_images"],
             augmentation=augmentation
         )
-
 
         # SegmentationDataLoader
         cfg_dataloader = cfg["segmentation_dataLoader"]
@@ -98,7 +95,6 @@ if __name__ == "__main__":
             pin_memory=cfg_dataloader["pin_memory"],
             seed=cfg_dataloader["seed"]
         )
-
 
         # Trainer
         cfg_trainer = cfg["trainer"]

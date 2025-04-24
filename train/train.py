@@ -83,7 +83,7 @@ class Trainer():
         self.scaler = GradScaler(enabled=mixed_precision)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optim,
-            mode='min',
+            mode='max',
             factor=0.5,
             patience=5
         )

@@ -145,12 +145,12 @@ class DecoderBlock3Plus(nn.Module):
     """
 
     def __init__(
-            self,
-            in_channels_list: Tuple[int, int, int, int, int],
-            mid_channels: int,
-            bias: bool = False,
-            normalize: Optional[Callable[..., nn.Module]] = None,
-            dropout: float = 0.0
+        self,
+        in_channels_list: Tuple[int, int, int, int, int],
+        mid_channels: int,
+        bias: bool = False,
+        normalize: Optional[Type[nn.Module]] = nn.BatchNorm2d,
+        dropout: float = 0.0
     ) -> None:
         """
         Args:
@@ -166,29 +166,40 @@ class DecoderBlock3Plus(nn.Module):
             nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
             for in_channels in in_channels_list
         ])
-        self.fusion = DoubleConv2d(mid_channels * 5, mid_channels, bias, normalize)
+        self.fusion = DoubleConv2d(mid_channels * len(in_channels_list), mid_channels, bias, normalize)
         self.dropout = nn.Dropout(dropout)
 
-    def _rescale(self, x: Tensor, y: Tuple[int, int]) -> Tensor:
+    def _rescale(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
         x_h, x_w = x.shape[2:]
         y_h, y_w = y
 
         # Downsample if larger
         if x_h > y_h and x_w > y_w:
-            return F.max_pool2d(x, int(x_h / y_h))
+            return F.adaptive_max_pool2d(x, (y_h, y_w))
         # Upsample if smaller
-        return F.interpolate(x, size=y, mode='bilinear', align_corners=True)
+        return F.interpolate(x, size=y, mode='bilinear', align_corners=False)
     
-    def forward(self, x: Tensor, y: Tensor) -> Tensor:
-        aligned = []
-        for conv, feat in zip(self.conv, x):
-            res = self._rescale(feat, y)
-            aligned.append(conv(res))
+    def forward(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
+        aligned = [
+            conv(self._rescale(feat, y))
+            for conv, feat in zip(self.conv, x)
+        ]
         fused = self.fusion(torch.cat(aligned, dim=1))
         return self.dropout(fused)
 
 
 class CGMHead(nn.Module):
+    """
+    Classification-Guided Module (CGM) head for classification tasks
+    Applies a 1x1 convolution followed by adaptive average pooling and softmax activation
+
+    Structure
+    ---------
+     | ↓ Conv2d (1x1)
+     | ↓ AdaptiveAvgPool2d (1x1)
+     | ↓ Flatten
+     | ↓ Softmax
+    """
     def __init__(
             self,
             in_channels: int,
@@ -196,11 +207,11 @@ class CGMHead(nn.Module):
     ) -> None:
         super(CGMHead, self).__init__()
         self.layers = nn.Sequential(
-            nn.Dropout(0.5),
+            # nn.Dropout(0.5),
             nn.Conv2d(in_channels, 2, kernel_size=1, bias=bias),
-            nn.AdaptiveMaxPool2d(1),
+            nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
-            nn.Sigmoid()
+            nn.Softmax(dim=1) # nn.Sigmoid()
         )
 
     def forward(self, x: Tensor) -> Tensor:
