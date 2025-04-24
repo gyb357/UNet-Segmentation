@@ -65,36 +65,36 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 | Model Architecture | Backbone  | Number of Parameters |
 |--------------------|-----------|----------------------|
-| UNet              | -         | 31.04M              |
-| Res18UNet         | ResNet18  | 20.78M              |
-| Res34UNet         | ResNet34  | 30.89M              |
-| Res50UNet         | ResNet50  | 40.90M              |
-| Res101UNet        | ResNet101 | 59.89M              |
-| Res152UNet        | ResNet152 | 75.54M              |
+| UNet              | -         |       31.04 M       |
+| Res18UNet         | ResNet18  |       20.78 M       |
+| Res34UNet         | ResNet34  |       30.89 M       |
+| Res50UNet         | ResNet50  |       40.90 M       |
+| Res101UNet        | ResNet101 |       59.89 M       |
+| Res152UNet        | ResNet152 |       75.54 M       |
 
 ## UNet2+
-Not yet implemented.
+Not yet implemented
 
 ## UNet3+
 
 | Model Architecture | Backbone  | Number of Parameters |
 |--------------------|-----------|----------------------|
-| UNet3+              | -         | 20.13M              |
-| Res18UNet3+         | ResNet18  | 12.30M              |
-| Res34UNet3+         | ResNet34  | 22.40M              |
-| Res50UNet3+         | ResNet50  | 25.16M              |
-| Res101UNet3+        | ResNet101 | 44.15M              |
-| Res152UNet3+        | ResNet152 | 59.79M              |
+| UNet3+              | -         |       20.13 M       |
+| Res18UNet3+         | ResNet18  |       12.30 M       |
+| Res34UNet3+         | ResNet34  |       22.40 M       |
+| Res50UNet3+         | ResNet50  |       25.16 M       |
+| Res101UNet3+        | ResNet101 |       44.15 M       |
+| Res152UNet3+        | ResNet152 |       59.79 M       |
 
 ## ResNet
 
 | Model Architecture | Layers | Parameters | ImageNet Accuracy (Top-1/Top-5) | Download Link |
 |--------------------|--------|------------|---------------------------------|---------------|
-| ResNet18         | 18     | 11.69M     | 69.76% / 89.08%                 | [resnet18-f37072fd.pth](https://download.pytorch.org/models/resnet18-f37072fd.pth) |
-| ResNet34         | 34     | 21.80M     | 73.31% / 91.42%                 | [resnet34-b627a593.pth](https://download.pytorch.org/models/resnet34-b627a593.pth) |
-| ResNet50         | 50     | 25.56M     | 80.86% / 95.43%                 | [resnet50-11ad3fa6.pth](https://download.pytorch.org/models/resnet50-11ad3fa6.pth) |
-| ResNet101        | 101    | 44.55M     | 81.89% / 95.78%                 | [resnet101-cd907fc2.pth](https://download.pytorch.org/models/resnet101-cd907fc2.pth) |
-| ResNet152        | 152    | 60.19M     | 82.28% / 96.00%                 | [resnet152-f82ba261.pth](https://download.pytorch.org/models/resnet152-f82ba261.pth) |
+| ResNet18         |  18    |   11.69M   |         69.76% / 89.08%         | [resnet18-f37072fd.pth](https://download.pytorch.org/models/resnet18-f37072fd.pth) |
+| ResNet34         |  34    |   21.80M   |         73.31% / 91.42%         | [resnet34-b627a593.pth](https://download.pytorch.org/models/resnet34-b627a593.pth) |
+| ResNet50         |  50    |   25.56M   |         80.86% / 95.43%         | [resnet50-11ad3fa6.pth](https://download.pytorch.org/models/resnet50-11ad3fa6.pth) |
+| ResNet101        |  101   |   44.55M   |         81.89% / 95.78%         | [resnet101-cd907fc2.pth](https://download.pytorch.org/models/resnet101-cd907fc2.pth) |
+| ResNet152        |  152   |   60.19M   |         82.28% / 96.00%         | [resnet152-f82ba261.pth](https://download.pytorch.org/models/resnet152-f82ba261.pth) |
 
 </div>
 
@@ -154,24 +154,32 @@ For custom training configurations, modify `config/config.yaml`.
 UNet-Segmentation
 ├── assets/           # Contains images and other assets for documentation
 │   └── unet.png
-├── config/           # Stores configuration files
+├── best_model/       # The model with the highest accuracy in valid_dataset is stored here
+├── checkpoint/       # Periodically, models are stored here
+├── config/           # configuration files
 │   └── config.yaml
 ├── dataset/          # Handles dataset-related operations
 │   ├── image/        # Stores raw images for training
 │   ├── label/        # Stores ground truth labels
 │   ├── mask/         # Stores segmentation masks
 │   └── dataset.py
+├── final_model/      # This is where the final training model is stored
+├── log               # A record of your learning progress
+│   └── train.csv
 ├── model/            # Contains model architectures and utilities
 │   ├── pretrained/   # Put pretrained resnet weights here
 │   ├── modules.py
 │   ├── resnet.py
 │   ├── unet.py
-│   ├── unet2+.py
-│   └── unet3+.py
+│   ├── unet2plus.py
+│   └── unet3plus.py
 ├── train/            # Training-related scripts
 │   ├── loss.py
 │   └── train.py
 ├── main.py           # Main entry point for running experiments
+├── LICENSE
+├── README.md
+├── requirements.txt
 └── utils.py
 ```
 
