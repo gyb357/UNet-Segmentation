@@ -8,8 +8,8 @@ model:
   name: 'unet'                          # Model name (e.g., 'unet', 'unet3plus'), unet2plus is not supported yet
   channels: 3                           # Number of input channels
   num_classes: 1                        # Number of output classes
-  backbone: 'resnet34'                  # Backbone architecture for encoder ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
-  pretrained: 'model\pretrained\resnet34-b627a593.pth'
+  backbone: ''                          # Backbone architecture for encoder ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
+  pretrained: ''                        # Pretrained model path ('model/pretrained/...')
   freeze_backbone: false                # Whether to freeze backbone weights
   bias: false                           # Whether to use bias in convolutional layers
   normalize: null                       # Normalization layer to use (default: `nn.BatchNorm2d`)
