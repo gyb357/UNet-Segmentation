@@ -6,7 +6,7 @@ from typing import Optional, Callable, Tuple, Type, Union, List
 from torch import Tensor
 from utils import ternary_op_elif
 from model.resnet import resnet
-from model.modules import EncoderBlock, DoubleConv2d, DecoderBlock, OutputBlock, DecoderBlock3Plus
+from model.modules import EncoderBlock, DoubleConv2d, DecoderBlock, DecoderBlock3Plus, CGMHead, OutputBlock
 
 
 __all__ = [
@@ -18,6 +18,6 @@ __all__ = [
     "Tensor",
     "ternary_op_elif",
     "resnet",
-    "EncoderBlock", "DoubleConv2d", "DecoderBlock", "OutputBlock", "DecoderBlock3Plus"
+    "EncoderBlock", "DoubleConv2d", "DecoderBlock", "DecoderBlock3Plus", "CGMHead", "OutputBlock",
 ]
 

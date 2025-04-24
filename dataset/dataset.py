@@ -24,7 +24,7 @@ class MaskDatasetGenerator():
         Args:
             label_dir (str): Path to directory containing label files
             mask_dir (str): Path to directory to save masks
-            mask_size (Tuple[int, int]): Size of mask to generate
+            mask_size (tuple): Size of mask to generate
             mask_extension (str): Extension of mask files
             mask_fill (int): Value to fill mask with (default: 255)
         """
@@ -84,7 +84,7 @@ class MaskDatasetGenerator():
             mask.save(save_dir)
 
 
-class Augmentation:
+class Augmentation():
     def __init__(
         self,
         channels: int,
@@ -100,7 +100,7 @@ class Augmentation:
         """
         Args:
             channels (int): Number of channels in image
-            resize (Optional[Tuple[int, int]]): Resize dimensions (default: None)
+            resize (tuple): Resize dimensions (default: None)
             hflip (bool): Whether to flip horizontally (default: False)
             vflip (bool): Whether to flip vertically (default: False)
             rotate (float): Rotation angle (default: 0.0)
@@ -170,7 +170,7 @@ class SegmentationDataset(Dataset):
             mask_dir (str): Path to directory containing masks
             extension (str): Extension of image and mask files
             num_images (int): Maximum number of images to load (default: 0)
-            augmentation (Optional[Augmentation]): Augmentation to apply (default: None)
+            augmentation (Augmentation): Augmentation to apply (default: None)
         """
         
         # Attributes
@@ -245,7 +245,7 @@ class SegmentationDataLoader():
         """
         Args:
             dataset (SegmentationDataset): Dataset to load
-            split (Dict[str, float]): Split proportions for train, valid, and test sets (default: {'train': 0.8, 'valid': 0.1, 'test': 0.1})
+            split (dict): Split proportions for train, valid, and test sets (default: {'train': 0.8, 'valid': 0.1, 'test': 0.1})
             batch_size (int): Batch size (default: 8)
             shuffle (bool): Whether to shuffle the dataset (default: True)
             num_workers (int): Number of worker threads (default: 0)
@@ -269,7 +269,7 @@ class SegmentationDataLoader():
         n_valid = int(self.split['valid'] * total)
         n_test = total - n_train - n_valid
 
-        # Split dataset into train, valid, test
+        # Split dataset into 'train', 'valid', 'test'
         splits = random_split(
             dataset=self.dataset,
             lengths=[n_train, n_valid, n_test],

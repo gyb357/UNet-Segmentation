@@ -141,6 +141,7 @@ class DecoderBlock3Plus(nn.Module):
     ---------
      | ↓ Conv2d (1x1)
      | ↓ DoubleConv2d
+     | ↓ Dropout
     """
 
     def __init__(
@@ -185,6 +186,25 @@ class DecoderBlock3Plus(nn.Module):
             aligned.append(conv(res))
         fused = self.fusion(torch.cat(aligned, dim=1))
         return self.dropout(fused)
+
+
+class CGMHead(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            bias: bool = False
+    ) -> None:
+        super(CGMHead, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Conv2d(in_channels, 2, kernel_size=1, bias=bias),
+            nn.AdaptiveMaxPool2d(1),
+            nn.Flatten(),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.layers(x)
 
 
 class OutputBlock(nn.Module):
