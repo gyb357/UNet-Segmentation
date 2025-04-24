@@ -153,10 +153,11 @@ class DecoderBlock3Plus(nn.Module):
     ) -> None:
         """
         Args:
-            in_channels_list (Tuple[int, int, int, int, int]): List of input channels for each source feature
+            in_channels_list (tuple): List of input channels for each source feature
             mid_channels (int): Number of middle channels
             bias (bool): Whether to use bias in convolutional layers
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout (float): Dropout probability
         """
 
         super(DecoderBlock3Plus, self).__init__()
@@ -168,17 +169,16 @@ class DecoderBlock3Plus(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def _rescale(self, x: Tensor, y: Tuple[int, int]) -> Tensor:
-        # Get current size
-        h, w = x.shape[2:]
+        x_h, x_w = x.shape[2:]
         y_h, y_w = y
 
         # Downsample if larger
-        if h > y_h and w > y_w:
-            return F.max_pool2d(x, int(h / y_h))
+        if x_h > y_h and x_w > y_w:
+            return F.max_pool2d(x, int(x_h / y_h))
         # Upsample if smaller
         return F.interpolate(x, size=y, mode='bilinear', align_corners=True)
     
-    def forward(self, x: Tensor, y: Tuple[int, int]) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor) -> Tensor:
         aligned = []
         for conv, feat in zip(self.conv, x):
             res = self._rescale(feat, y)

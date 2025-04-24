@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+import itertools
 from typing import Optional, Callable, Tuple, Type, Union, List
 from torch import Tensor
 from utils import ternary_op_elif
@@ -12,6 +13,7 @@ __all__ = [
     "nn",
     "torch",
     "F",
+    "itertools",
     "Optional", "Callable", "Tuple", "Type", "Union", "List",
     "Tensor",
     "ternary_op_elif",

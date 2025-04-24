@@ -1,15 +1,25 @@
 from . import *
 
 
+# Configuration of the decoder layers
 _UNET3PLUS_CONFIGS = {
-    'd4': (64, 128, 256, 512, 1024),
-    'd3': (64, 128, 256, 64, 1024),
-    'd2': (64, 128, 64, 64, 1024),
-    'd1': (64, 64, 64, 64, 1024)
+    'd1': (64, 128, 256, 512, 1024),
+    'd2': (64, 128, 256, 64, 1024),
+    'd3': (64, 128, 64, 64, 1024),
+    'd4': (64, 64, 64, 64, 1024)
 }
 
 
 class UNet3Plus(nn.Module):
+    """
+    UNet3+ implementation for image segmentation
+    This model can use either a ResNet backbone as encoder or a standard UNet encoder
+
+    Structure
+    ---------
+    https://arxiv.org/abs/2004.08790
+    """
+
     def __init__(
             self,
             channels: int,
@@ -21,6 +31,7 @@ class UNet3Plus(nn.Module):
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0,
             init_weights: bool = False,
+            deep_supervision: bool = False,
             cgm: bool = False
     ) -> None:
         """
@@ -34,13 +45,14 @@ class UNet3Plus(nn.Module):
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
             dropout (float): Dropout probability
             init_weights (bool): Whether to initialize weights
+            deep_supervision (bool): Whether to use deep supervision
             cgm (bool): Whether to use CGM
         """
 
         super(UNet3Plus, self).__init__()
         # Attributes
         self.backbone = backbone
-        self.cgm = cgm
+        self.deep_supervision = deep_supervision
 
         # Encoder layers (with backbone)
         if backbone:
@@ -54,7 +66,7 @@ class UNet3Plus(nn.Module):
 
             # Freeze the backbone if requested
             if freeze_backbone:
-                for p in self.parameters():
+                for p in itertools.chain(self.e1.parameters(), self.e2.parameters(), self.e3.parameters(), self.e4.parameters(), self.e5.parameters()):
                     p.requires_grad = False
 
         # Encoder layers (without backbone)
@@ -66,40 +78,24 @@ class UNet3Plus(nn.Module):
 
             # Center layer
             self.e5 = DoubleConv2d(512, 1024, bias, normalize)
+        
+        # Decoder
+        self.d1 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d1'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
+        self.d2 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d2'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
+        self.d3 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d3'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
+        self.d4 = DecoderBlock3Plus(_UNET3PLUS_CONFIGS['d4'], mid_channels=64, bias=bias, normalize=normalize, dropout=dropout)
 
-        # Decoder layers
-        self.d1 = DecoderBlock3Plus(
-            in_channels_list=_UNET3PLUS_CONFIGS['d1'],
-            mid_channels=64,
-            normalize=normalize,
-            bias=bias,
-            dropout=dropout
-        )
-        self.d2 = DecoderBlock3Plus(
-            in_channels_list=_UNET3PLUS_CONFIGS['d2'],
-            mid_channels=64,
-            normalize=normalize,
-            bias=bias,
-            dropout=dropout
-        )
-        self.d3 = DecoderBlock3Plus(
-            in_channels_list=_UNET3PLUS_CONFIGS['d3'],
-            mid_channels=64,
-            normalize=normalize,
-            bias=bias,
-            dropout=dropout
-        )
-        self.d4 = DecoderBlock3Plus(
-            in_channels_list=_UNET3PLUS_CONFIGS['d4'],
-            mid_channels=64,
-            normalize=normalize,
-            bias=bias,
-            dropout=dropout
-        )
-
-        # Output layer
+        # Main output
         self.out = OutputBlock(64, 64, num_classes, backbone, bias)
 
+        # Deep supervision
+        if self.deep_supervision:
+            self.aux1 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+            self.aux2 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+            self.aux3 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+            self.aux4 = nn.Conv2d(64, num_classes, kernel_size=1, bias=bias)
+
+        # CGM
         if cgm:
             self.cgm_head = nn.Sequential(
                 nn.Dropout(0.5),
@@ -114,31 +110,18 @@ class UNet3Plus(nn.Module):
             self._init_weights()
 
     def _init_weights(self) -> None:
-        if self.backbone:
-            # If backbone is provided, initialize only the decoder layers
-            encoder_modules = set()
-            encoder_layers = [self.e1, self.e2, self.e3, self.e4, self.e5]
-            for layer in encoder_layers:
-                encoder_modules.update(layer.modules())
+        encoder_modules = set([self.e1, self.e2, self.e3, self.e4, self.e5]) if self.backbone else []
 
-            for m in self.modules():
-                if m in encoder_modules:
-                    continue
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                elif isinstance(m, nn.BatchNorm2d):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
-        else:
-            # If backbone is not provided, initialize all layers
-            for m in self.modules():
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                elif isinstance(m, nn.BatchNorm2d):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
+        for m in self.modules():
+            if self.backbone and any(m in mod.modules() for mod in encoder_modules):
+                continue
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]]:
         # Encoder
         if self.backbone:
             e1 = self.e1(x)
@@ -155,23 +138,33 @@ class UNet3Plus(nn.Module):
 
         # CGM
         if self.cgm:
-            cls = self.cgm_head(e5).argmax(1).view(-1, 1, 1, 1).float()
+            probas = self.cgm_head(e5)
+            fg = probas[:, 1].view(-1, 1, 1, 1)
 
-        # Decoder fusion passes
-        target4 = e4.shape[-2:]
-        d1 = self.d1((e1, e2, e3, e4, e5), target4)
+        # Decoder
+        sz4 = e4.shape[-2:]
+        d1 = self.d1((e1, e2, e3, e4, e5), sz4)
+        sz3 = e3.shape[-2:]
+        d2 = self.d2((e1, e2, e3, d1, e5), sz3)
+        sz2 = e2.shape[-2:]
+        d3 = self.d3((e1, e2, d2, d1, e5), sz2)
+        sz1 = e1.shape[-2:]
+        d4 = self.d4((e1, d3, d2, d1, e5), sz1)
 
-        target3 = e3.shape[-2:]
-        d2 = self.d2((e1, e2, e3, d1, e5), target3)
-
-        target2 = e2.shape[-2:]
-        d3 = self.d3((e1, e2, d2, d1, e5), target2)
-
-        target1 = e1.shape[-2:]
-        d4 = self.d4((e1, d3, d2, d1, e5), target1)
-
-        # CGM weighting
+        # CGM gating
         if self.cgm:
-            d4 = d4 * cls
-        return self.out(d4)
+            d4 = d4 * fg
+
+        # Main output
+        out = self.out(d4)
+
+        # Deep supervision outputs
+        if self.deep_supervision and self.training:
+            size = x.shape[2:]
+            aux1 = F.interpolate(self.aux1(d1), size=size, mode='bilinear', align_corners=True)
+            aux2 = F.interpolate(self.aux2(d2), size=size, mode='bilinear', align_corners=True)
+            aux3 = F.interpolate(self.aux3(d3), size=size, mode='bilinear', align_corners=True)
+            aux4 = F.interpolate(self.aux4(d4), size=size, mode='bilinear', align_corners=True)
+            return out, aux1, aux2, aux3, aux4
+        return out
 

@@ -39,6 +39,7 @@ class UNet(nn.Module):
             normalize: Optional[Callable[..., nn.Module]] = None,
             dropout: float = 0.0,
             init_weights: bool = False,
+            deep_supervision: bool = False
     ) -> None:
         """
         Args:
@@ -51,13 +52,15 @@ class UNet(nn.Module):
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
             dropout (float): Dropout probability
             init_weights (bool): Whether to initialize weights
+            deep_supervision (bool): Whether to use deep supervision
         """
 
         super(UNet, self).__init__()
         # Attributes
         self.backbone = backbone
+        self.deep_supervision = deep_supervision
 
-        # Get configuration based on backbone depth
+        # Select decoder config based on backbone depth
         self.backbone_depth = ternary_op_elif(
             backbone in ['resnet18', 'resnet34'], 'shallow',
             backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
@@ -79,7 +82,7 @@ class UNet(nn.Module):
 
             # Freeze the backbone if requested
             if freeze_backbone:
-                for p in self.parameters():
+                for p in itertools.chain(self.e1.parameters(), self.e2.parameters(), self.e3.parameters(), self.e4.parameters(), self.e5.parameters()):
                     p.requires_grad = False
 
         # Encoder layers (without backbone)
@@ -101,40 +104,34 @@ class UNet(nn.Module):
         # Output layer
         self.out = OutputBlock(self.decoder_conv_filters[4], 32, num_classes, backbone)
 
+        # Deep supervision
+        if self.deep_supervision:
+            self.aux_convs = nn.ModuleList([
+                nn.Conv2d(self.decoder_conv_filters[i], num_classes, kernel_size=1, bias=bias)
+                for i in range(4)
+            ])
+
         # Initialize weights
         if init_weights:
             self._init_weights()
 
     def _init_weights(self) -> None:
-        if self.backbone:
-            # If backbone is provided, initialize only the decoder layers
-            encoder_modules = set()
-            encoder_layers = [self.e1, self.e2, self.e3, self.e4, self.e5]
-            for layer in encoder_layers:
-                encoder_modules.update(layer.modules())
-
-            for m in self.modules():
-                if m in encoder_modules:
-                    continue
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                elif isinstance(m, nn.BatchNorm2d):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
-        else:
-            # If backbone is not provided, initialize all layers
-            for m in self.modules():
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                elif isinstance(m, nn.BatchNorm2d):
-                    nn.init.constant_(m.weight, 1)
-                    nn.init.constant_(m.bias, 0)
+        encoder_modules = set([self.e1, self.e2, self.e3, self.e4, self.e5]) if self.backbone else []
+        
+        for m in self.modules():
+            if self.backbone and any(m in mod.modules() for mod in encoder_modules):
+                continue
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def _get_parameter_count(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
-    def forward(self, x: Tensor) -> Tensor:
-        # Encoder
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]]:
+        # Encoder forward
         if self.backbone:
             e1 = self.e1(x)
             e2 = self.e2(e1)
@@ -146,13 +143,27 @@ class UNet(nn.Module):
             e2, p2 = self.e2(p1)
             e3, p3 = self.e3(p2)
             e4, p4 = self.e4(p3)
-            # Center layer
             e5 = self.e5(p4)
 
-        # Decoder
+        # Decoder forward
         d1 = self.d1(e5, e4)
         d2 = self.d2(d1, e3)
         d3 = self.d3(d2, e2)
         d4 = self.d4(d3, e1)
-        return self.out(d4)
+
+        # Main output
+        out = self.out(d4)
+
+        # Deep supervision outputs
+        if self.deep_supervision and self.training:
+            size = x.shape[2:]
+            auxs = []
+            for i, feat in enumerate([d1, d2, d3, d4]):
+                aux = F.interpolate(
+                    self.aux_convs[i](feat),
+                    size=size, mode='bilinear', align_corners=True
+                )
+                auxs.append(aux)
+            return (out, *auxs)
+        return out
 
