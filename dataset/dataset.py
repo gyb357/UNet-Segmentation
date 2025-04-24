@@ -126,6 +126,12 @@ class Augmentation():
             image: Image.Image,
             mask: Image.Image
     ) -> Tuple[Image.Image, Image.Image]:
+        """
+        Args:
+            image (PIL.Image): Image to augment
+            mask (PIL.Image): Mask to augment
+        """
+
         # Ensure modes
         image = image.convert('L') if self.channels == 1 else image.convert('RGB')
         mask = mask.convert('L')
@@ -191,6 +197,12 @@ class SegmentationDataset(Dataset):
             self.dir['masks'] = self.dir['masks'][:self.num_images]
 
     def _get_dir(self, images: List[str], masks: List[str]) -> Dict[str, List[str]]:
+        """
+        Args:
+            images (list): List of image files
+            masks (list): List of mask files
+        """
+
         dir = {
             'images': [],
             'masks': []
@@ -203,12 +215,22 @@ class SegmentationDataset(Dataset):
         return dir
     
     def _get_files(self, dir: str) -> List[str]:
+        """
+        Args:
+            dir (str): Directory to search for files
+        """
+
         return [file for file in os.listdir(dir) if file.endswith(self.extension)]
     
     def __len__(self) -> int:
         return len(self.dir['images'])
     
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor]:
+        """
+        Args:
+            idx (int): Index of the item to get
+        """
+        
         image_dir = self.dir['images'][idx]
         mask_dir = self.dir['masks'][idx]
 

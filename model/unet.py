@@ -45,7 +45,7 @@ class UNet(nn.Module):
         Args:
             channels (int): Number of input channels
             num_classes (int): Number of output classes
-            backbone (str): Backbone architecture for encoder
+            backbone (str): Backbone architecture for encoder ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
             pretrained (str): Pretrained model path
             freeze_backbone (bool): Whether to freeze backbone weights
             bias (bool): Whether to use bias in convolutional layers
@@ -53,7 +53,7 @@ class UNet(nn.Module):
             dropout (float): Dropout probability
             init_weights (bool): Whether to initialize weights
             deep_supervision (bool): Whether to use deep supervision
-            cgm (bool): Whether to use CGM
+            cgm (bool): Whether to use CGM(Classification-Guided Module)
         """
 
         super(UNet, self).__init__()
@@ -161,7 +161,7 @@ class UNet(nn.Module):
         d3 = self.d3(d2, e2)
         d4 = self.d4(d3, e1)
 
-        # Apply CGM gating to final decoder feature
+        # Apply CGM gating
         if self.cgm:
             probas = self.cgm_head(e5)
             fg = probas[:, 1].view(-1, 1, 1, 1) # foreground probability

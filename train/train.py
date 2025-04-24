@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 
 # Columns for trainer configs
-TRAINER_CONFIGS = [
+_TRAINER_CONFIGS = [
     'Epoch',
     'Train_loss',
     'Train_loss_mini',
@@ -36,7 +36,7 @@ class Trainer():
             dataloader: Dict[str, DataLoader],
             lr: float = 1e-4,
             weight_decay: float = 0.0,
-            mixed_precision: bool = False,
+            mixed_precision: bool = True,
             epochs: int = 100,
             accumulation_step: int = 1,
             checkpoint_step: int = 10,
@@ -44,12 +44,12 @@ class Trainer():
     ) -> None:
         """
         Args:
-            device (device): Device to run the model on
+            device (device): Device to run the model on ('cuda' or 'cpu')
             model (nn.Module): Model to train
-            loss_fn (nn.Module): Loss function
+            loss_fn (nn.Module): Loss function ('BCEWithLogitsLoss' or 'CrossEntropyLoss')
             metrics_fn (str): Metrics function ('dice' or 'iou')
             num_classes (int): Number of classes
-            dataloader (Dict[str, DataLoader]): Data loaders for train, valid, test
+            dataloader (dict): Data loaders for 'train', 'valid', 'test'
             lr (float): Learning rate (default: 1e-4)
             weight_decay (float): Weight decay (default: 0.0)
             mixed_precision (bool): Whether to use mixed precision (default: False)
@@ -60,7 +60,7 @@ class Trainer():
         """
 
         # Attributes
-        self.device = device
+        self.device = torch.device(device)
         self.model = model.to(device)
         self.num_classes = num_classes
         self.mixed_precision = mixed_precision
@@ -204,7 +204,7 @@ class Trainer():
             os.makedirs(self.log_dir)
 
         with open(os.path.join(self.log_dir, 'train.csv'), 'w', newline='') as csv_file:
-            csv_writer = csv.DictWriter(csv_file, TRAINER_CONFIGS)
+            csv_writer = csv.DictWriter(csv_file, _TRAINER_CONFIGS)
             csv_writer.writeheader()
 
             # Empty cache
@@ -314,11 +314,11 @@ class Trainer():
                 ]
 
                 # Log to csv
-                csv_writer.writerow({TRAINER_CONFIGS[i]: values[i] for i in range(len(TRAINER_CONFIGS))})
+                csv_writer.writerow({_TRAINER_CONFIGS[i]: values[i] for i in range(len(_TRAINER_CONFIGS))})
                 csv_file.flush()
                 # Log to tensorboard
-                for i in range(1, len(TRAINER_CONFIGS)):
-                    self.tensorboard.add_scalar(TRAINER_CONFIGS[i], values[i], epoch)
+                for i in range(1, len(_TRAINER_CONFIGS)):
+                    self.tensorboard.add_scalar(_TRAINER_CONFIGS[i], values[i], epoch)
 
                 # Add sample images to tensorboard
                 if epoch % 5 == 0 and self.valid_loader:
