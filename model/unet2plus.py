@@ -2,7 +2,7 @@ from . import *
 
 
 # Configuration of the encoder layers
-_UNET3PLUS_CONFIGS = {
+_UNET2PLUS_CONFIGS = {
     'shallow': (64, 64, 128, 256, 512),    # resnet18,34
     'deep':    (64, 256, 512, 1024, 2048), # resnet50,101,152
     'default': (64, 128, 256, 512, 1024)
@@ -59,7 +59,7 @@ class UNet2Plus(nn.Module):
             backbone in ['resnet50', 'resnet101', 'resnet152'], 'deep',
             'default'
         )
-        e1, e2, e3, e4, e5 = _UNET3PLUS_CONFIGS[base]
+        e1, e2, e3, e4, e5 = _UNET2PLUS_CONFIGS[base]
 
         # Encoder layers (with backbone)
         if backbone:
@@ -170,10 +170,10 @@ class UNet2Plus(nn.Module):
         d04 = self.d04([e1, d01, d02, d03, d13], sz)
 
         if self.cgm:
-            d4 = d4 * fg
+            d04 = d04 * fg
 
         # Output layer forward pass
-        out = self.out(d4)
+        out = self.out(d04)
 
         # Deep supervision outputs
         if self.deep_supervision and self.training:
