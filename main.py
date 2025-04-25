@@ -2,8 +2,9 @@ if __name__ == "__main__":
     # Imports
     import os
     import torch.nn as nn
-    from utils import load_config, ternary_op_elif
+    from utils import load_config
     from model.unet import UNet
+    from model.unet2plus import UNet2Plus
     from model.unet3plus import UNet3Plus
     from dataset.dataset import MaskDatasetGenerator, Augmentation, SegmentationDataset, SegmentationDataLoader
     from train.train import Trainer
@@ -22,12 +23,13 @@ if __name__ == "__main__":
         cfg_model = cfg["model"]
         model_name = cfg_model["name"]
 
-        model = ternary_op_elif(
-            model_name == 'unet', UNet,
-            model_name == 'unet3plus', UNet3Plus,
-            None
-        )
-        if model is None:
+        if model_name == 'unet':
+            model = UNet
+        elif model_name == 'unet2plus':
+            model = UNet2Plus
+        elif model_name == 'unet3plus':
+            model = UNet3Plus
+        else:
             raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
         
         model = model(

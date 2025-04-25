@@ -73,7 +73,14 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 | Res152UNet        | ResNet152 |       75.54 M       |
 
 ## UNet2+
-Not yet implemented
+| Model Architecture | Backbone  | Number of Parameters |
+|--------------------|-----------|----------------------|
+| UNet2+            | -         |       20.62 M       |
+| Res18UNet2+       | ResNet18  |       12.86 M       |
+| Res34UNet2+       | ResNet34  |       22.97 M       |
+| Res50UNet2+       | ResNet50  |       25.51 M       |
+| Res101UNet2+      | ResNet101 |       44.50 M       |
+| Res152UNet2+      | ResNet152 |       60.15 M       |
 
 ## UNet3+
 
