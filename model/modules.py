@@ -133,6 +133,49 @@ class DecoderBlock(nn.Module):
         return x
 
 
+class DecoderBlock2Plus(nn.Module):
+    """
+    Decoder block with UNet2+ source features
+
+    Structure
+    ---------
+
+    """
+
+    def __init__(
+            self,
+            in_channels_list: Tuple[int],
+            mid_channels: int,
+            bias: bool = False,
+            normalize: Optional[Type[nn.Module]] = nn.BatchNorm2d,
+            dropout: float = 0.0
+    ) -> None:
+        """
+        Args:
+            in_channels_list (tuple): List of input channels for each source feature
+            mid_channels (int): Number of middle channels
+            bias (bool): Whether to use bias in convolutional layers
+            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
+            dropout (float): Dropout probability
+        """
+
+        super(DecoderBlock2Plus, self).__init__()
+        self.conv = nn.ModuleList([
+            nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
+            for in_channels in in_channels_list
+        ])
+        self.fusion = DoubleConv2d(mid_channels * len(in_channels_list), mid_channels, bias, normalize)
+        self.dropout = nn.Dropout(dropout)
+
+    def _rescale(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
+        return F.interpolate(x, size=y, mode="bilinear", align_corners=False)
+
+    def forward(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
+        aligned = [proj(self._rescale(f, y)) for proj, f in zip(self.conv, x)]
+        fused = self.fusion(torch.cat(aligned, dim=1))
+        return self.dropout(fused)
+
+
 class DecoderBlock3Plus(nn.Module):
     """
     Decoder block with UNet3+ source features
