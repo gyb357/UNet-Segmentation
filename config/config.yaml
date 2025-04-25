@@ -5,8 +5,8 @@ task:
 
 # Model
 model:
-  name: 'unet'                          # Model name (e.g., 'unet', 'unet3plus'), unet2plus is not supported yet
-  channels: 3                           # Number of input channels
+  name: 'unet'                          # Model name ('unet', 'unet2plus', 'unet3plus')
+  channels: 3                           # Number of input channels (3 or 1)
   num_classes: 1                        # Number of output classes
   backbone: ''                          # Backbone architecture for encoder ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
   pretrained: ''                        # Pretrained model path ('model/pretrained/...')
