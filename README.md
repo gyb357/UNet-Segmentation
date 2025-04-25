@@ -63,35 +63,15 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 ## UNet
 
-| Model Architecture | Backbone  | Number of Parameters |
-|--------------------|-----------|----------------------|
-| UNet              | -         |       31.04 M       |
-| Res18UNet         | ResNet18  |       20.78 M       |
-| Res34UNet         | ResNet34  |       30.89 M       |
-| Res50UNet         | ResNet50  |       40.90 M       |
-| Res101UNet        | ResNet101 |       59.89 M       |
-| Res152UNet        | ResNet152 |       75.54 M       |
+|  Backbone  |  UNet  | UNet2+ | UNet3+ |
+|------------|--------|--------|--------|
+| -          | 31.04M | 20.62M | 20.13M | 
+| ResNet 18  | 20.78M | 12.86M | 12.30M | 
+| ResNet 34  | 30.89M | 22.97M | 22.40M | 
+| ResNet 50  | 40.90M | 25.51M | 25.16M | 
+| ResNet 101 | 59.89M | 44.50M | 44.15M | 
+| ResNet 152 | 75.54M | 60.15M | 59.79M | 
 
-## UNet2+
-| Model Architecture | Backbone  | Number of Parameters |
-|--------------------|-----------|----------------------|
-| UNet2+            | -         |       20.62 M       |
-| Res18UNet2+       | ResNet18  |       12.86 M       |
-| Res34UNet2+       | ResNet34  |       22.97 M       |
-| Res50UNet2+       | ResNet50  |       25.51 M       |
-| Res101UNet2+      | ResNet101 |       44.50 M       |
-| Res152UNet2+      | ResNet152 |       60.15 M       |
-
-## UNet3+
-
-| Model Architecture | Backbone  | Number of Parameters |
-|--------------------|-----------|----------------------|
-| UNet3+              | -         |       20.13 M       |
-| Res18UNet3+         | ResNet18  |       12.30 M       |
-| Res34UNet3+         | ResNet34  |       22.40 M       |
-| Res50UNet3+         | ResNet50  |       25.16 M       |
-| Res101UNet3+        | ResNet101 |       44.15 M       |
-| Res152UNet3+        | ResNet152 |       59.79 M       |
 
 ## ResNet
 
