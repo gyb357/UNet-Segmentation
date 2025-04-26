@@ -3,6 +3,7 @@ if __name__ == "__main__":
     import os
     import torch.nn as nn
     from utils import load_config
+    from model.ensemble import EnsembleUNet
     from model.unet import UNet
     from model.unet2plus import UNet2Plus
     from model.unet3plus import UNet3Plus
@@ -21,30 +22,52 @@ if __name__ == "__main__":
     # Model
     if task_train or task_test:
         cfg_model = cfg["model"]
-        model_name = cfg_model["name"]
+        model_ensemble = cfg_model["ensemble"]
 
-        if model_name == 'unet':
-            model = UNet
-        elif model_name == 'unet2plus':
-            model = UNet2Plus
-        elif model_name == 'unet3plus':
-            model = UNet3Plus
+        # Ensemble model
+        if model_ensemble:
+            model = EnsembleUNet(
+                model_names=model_ensemble,
+                channels=cfg_model["channels"],
+                num_classes=cfg_model["num_classes"],
+                backbone=cfg_model["backbone"],
+                pretrained=cfg_model["pretrained"],
+                freeze_backbone=cfg_model["freeze_backbone"],
+                bias=cfg_model["bias"],
+                normalize=cfg_model["normalize"],
+                dropout=cfg_model["dropout"],
+                init_weights=cfg_model["init_weights"],
+                deep_supervision=cfg_model["deep_supervision"],
+                cgm=cfg_model["cgm"]
+            )
+
+        # Single model
         else:
-            raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
-        
-        model = model(
-            channels=cfg_model["channels"],
-            num_classes=cfg_model["num_classes"],
-            backbone=cfg_model["backbone"],
-            pretrained=cfg_model["pretrained"],
-            freeze_backbone=cfg_model["freeze_backbone"],
-            bias=cfg_model["bias"],
-            normalize=cfg_model["normalize"],
-            dropout=cfg_model["dropout"],
-            init_weights=cfg_model["init_weights"],
-            deep_supervision=cfg_model["deep_supervision"],
-            cgm=cfg_model["cgm"]
-        )
+            model_name = cfg_model["name"]
+            if model_name == 'unet':
+                model = UNet
+            elif model_name == 'unet2plus':
+                model = UNet2Plus
+            elif model_name == 'unet3plus':
+                model = UNet3Plus
+            else:
+                raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
+            
+            model = model(
+                channels=cfg_model["channels"],
+                num_classes=cfg_model["num_classes"],
+                backbone=cfg_model["backbone"],
+                pretrained=cfg_model["pretrained"],
+                freeze_backbone=cfg_model["freeze_backbone"],
+                bias=cfg_model["bias"],
+                normalize=cfg_model["normalize"],
+                dropout=cfg_model["dropout"],
+                init_weights=cfg_model["init_weights"],
+                deep_supervision=cfg_model["deep_supervision"],
+                cgm=cfg_model["cgm"]
+            )
+
+        # Print model parameters
         parameters = model._get_parameters()
         print(f"Total Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
 

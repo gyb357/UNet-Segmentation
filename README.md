@@ -61,7 +61,7 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 <div align="center">
 
-## UNet
+## UNet Parameters
 
 |  Backbone  |  UNet  | UNet2+ | UNet3+ |
 |------------|--------|--------|--------|

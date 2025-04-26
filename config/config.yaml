@@ -5,6 +5,11 @@ task:
 
 # Model
 model:
+  ensemble: [                           # Ensemble of model list (default: None, example: ['unet', 'unet2plus', 'unet3plus'])
+    #'unet',
+    #'unet2plus',
+    #'unet3plus'
+  ]
   name: 'unet'                          # Model name ('unet', 'unet2plus', 'unet3plus')
   channels: 3                           # Number of input channels (3 or 1)
   num_classes: 1                        # Number of output classes
