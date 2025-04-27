@@ -1,12 +1,13 @@
 import yaml
 import numpy as np
+import torch.nn as nn
+import os
 from typing import Any, Dict
 from pathlib import Path
 from torch import Tensor
 
 
-@staticmethod
-def ternary_op(a: bool, b: Any, c: Any) -> Any:
+def ternary_operation(a: bool, b: Any, c: Any) -> Any:
     """
     Args:
         a (bool): Condition to check
@@ -16,8 +17,7 @@ def ternary_op(a: bool, b: Any, c: Any) -> Any:
 
     return b if a else c
 
-@staticmethod
-def ternary_op_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
+def ternary_operation_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
     """
     Args:
         a (bool): Condition to check
@@ -26,14 +26,13 @@ def ternary_op_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
         d (Any): Value to return if `c` is `True`
         e (Any): Value to return if `c` is `False`
     """
-    
-    return b if a else ternary_op(c, d, e)
 
-@staticmethod
+    return b if a else ternary_operation(c, d, e)
+
 def load_config(path: str) -> Dict[str, Any]:
     """
     Args:
-        path (str): Path to the configuration file.
+        path (str): Path to the configuration file
     """
 
     # Convert path to Path object
@@ -46,12 +45,43 @@ def load_config(path: str) -> Dict[str, Any]:
         config = yaml.safe_load(file)
     return config
 
-@staticmethod
 def tensor2numpy(tensor: Tensor) -> np.float32:
     """
     Args:
-        tensor (Tensor): Input tensor.
+        tensor (Tensor): Input tensor
     """
 
     return tensor.detach().cpu().numpy().astype(np.float32)
+
+def get_model(model_name: str) -> nn.Module:
+    """
+    Args:
+        model_name (str): Name of the model
+    """
+
+    # Import models
+    from model.unet import UNet, UNet2Plus, UNet3Plus
+
+    if model_name == 'unet':
+        return UNet
+    elif model_name == 'unet2plus':
+        return UNet2Plus
+    elif model_name == 'unet3plus':
+        return UNet3Plus
+    else:
+        raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
+
+def has_files(directory: str) -> bool:
+    """
+    Args:
+        directory (str): Directory to check
+    """
+
+    try:
+        for entry in os.scandir(directory):
+            if entry.is_file() and entry.name != '.gitkeep':
+                return True
+        return False
+    except FileNotFoundError:
+        raise ValueError(f"Directory '{directory}' does not exist.")
 

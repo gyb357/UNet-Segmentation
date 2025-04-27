@@ -3,15 +3,15 @@ from . import *
 
 class DoubleConv2d(nn.Module):
     """
-    Double convolutional block with normalization and ReLU activation
+    Double convolutional block with normalize and ReLU activation
     
     Structure
     ---------
      | ↓ Conv2d (3x3)
-     | ↓ Normalization
+     | ↓ Normalize
      | ↓ ReLU
      | ↓ Conv2d (3x3)
-     | ↓ Normalization
+     | ↓ Normalize
      | ↓ ReLU
     """
 
@@ -20,24 +20,24 @@ class DoubleConv2d(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Optional[Callable[..., nn.Module]] = None
+            normalize: Optional[nn.Module] = None
     ) -> None:
         """
         Args:
             in_channels (int): Number of input channels
             out_channels (int): Number of output channels
-            bias (bool): Whether to use bias in convolutional layers
+            bias (bool): Whether to use bias in convolutional layers (default: `False`)
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
         """
 
         super(DoubleConv2d, self).__init__()
-        self.normalize = normalize or nn.BatchNorm2d
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.layers = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=bias),
-            self.normalize(out_channels),
+            normalize(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=bias),
-            self.normalize(out_channels),
+            normalize(out_channels),
             nn.ReLU(inplace=True)
         )
 
@@ -61,19 +61,20 @@ class EncoderBlock(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Optional[Callable[..., nn.Module]] = None,
+            normalize: Optional[nn.Module] = None,
             dropout: float = 0.0
     ) -> None:
         """
         Args:
             in_channels (int): Number of input channels
             out_channels (int): Number of output channels
-            bias (bool): Whether to use bias in convolutional layers
+            bias (bool): Whether to use bias in convolutional layers (default: `False`)
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout (float): Dropout probability
+            dropout (float): Dropout probability (default: `0.0`)
         """
 
         super(EncoderBlock, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.conv = DoubleConv2d(in_channels, out_channels, bias, normalize)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.drop = nn.Dropout(dropout)
@@ -104,7 +105,7 @@ class DecoderBlock(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Optional[Callable[..., nn.Module]] = None,
+            normalize: Optional[nn.Module] = None,
             dropout: float = 0.0
     ) -> None:
         """
@@ -113,12 +114,13 @@ class DecoderBlock(nn.Module):
             up_out_channels (int): Number of output channels for transposed convolutional layer
             in_channels (int): Number of input channels
             out_channels (int): Number of output channels
-            bias (bool): Whether to use bias in convolutional layers
+            bias (bool): Whether to use bias in convolutional layers (default: `False`)
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout (float): Dropout probability
+            dropout (float): Dropout probability (default: `0.0`)
         """
 
         super(DecoderBlock, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2, bias=bias)
         self.conv = DoubleConv2d(in_channels, out_channels, bias, normalize)
         self.drop = nn.Dropout(dropout)
@@ -126,59 +128,17 @@ class DecoderBlock(nn.Module):
     def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         x = self.trans(x1)
 
-        assert x.shape[2:] == x2.shape[2:], f"Skip connection size {x2.shape[2:]} doesn't match upsampled size {x1.shape[2:]}."
+        if x.shape[2:] != x2.shape[2:]:
+            x2 = F.interpolate(x2, size=x.shape[2:], mode='bilinear', align_corners=False)
 
         x = self.conv(torch.cat([x, x2], dim=1))
         x = self.drop(x)
         return x
 
 
-class DecoderBlock2Plus(nn.Module):
+class DecoderBlockPlus(nn.Module):
     """
-    Decoder block with UNet2+ source features
-
-    Structure
-    ---------
-
-    """
-
-    def __init__(
-            self,
-            in_channels_list: Tuple[int],
-            mid_channels: int,
-            bias: bool = False,
-            normalize: Optional[Type[nn.Module]] = nn.BatchNorm2d,
-            dropout: float = 0.0
-    ) -> None:
-        """
-        Args:
-            in_channels_list (tuple): List of input channels for each source feature
-            mid_channels (int): Number of middle channels
-            bias (bool): Whether to use bias in convolutional layers
-            normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout (float): Dropout probability
-        """
-
-        super(DecoderBlock2Plus, self).__init__()
-        self.conv = nn.ModuleList([
-            nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
-            for in_channels in in_channels_list
-        ])
-        self.fusion = DoubleConv2d(mid_channels * len(in_channels_list), mid_channels, bias, normalize)
-        self.dropout = nn.Dropout(dropout)
-
-    def _rescale(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
-        return F.interpolate(x, size=y, mode="bilinear", align_corners=False)
-
-    def forward(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
-        aligned = [proj(self._rescale(f, y)) for proj, f in zip(self.conv, x)]
-        fused = self.fusion(torch.cat(aligned, dim=1))
-        return self.dropout(fused)
-
-
-class DecoderBlock3Plus(nn.Module):
-    """
-    Decoder block with UNet3+ source features
+    Decoder block with UNet2+ and UNet3+ source features
 
     Structure
     ---------
@@ -188,23 +148,24 @@ class DecoderBlock3Plus(nn.Module):
     """
 
     def __init__(
-        self,
-        in_channels_list: Tuple[int, int, int, int, int],
-        mid_channels: int,
-        bias: bool = False,
-        normalize: Optional[Type[nn.Module]] = nn.BatchNorm2d,
-        dropout: float = 0.0
+            self,
+            in_channels_list: Tuple[int, ...],
+            mid_channels: int,
+            bias: bool = False,
+            normalize: Optional[nn.Module] = None,
+            dropout: float = 0.0
     ) -> None:
         """
         Args:
             in_channels_list (tuple): List of input channels for each source feature
             mid_channels (int): Number of middle channels
-            bias (bool): Whether to use bias in convolutional layers
+            bias (bool): Whether to use bias in convolutional layers (default: `False`)
             normalize (nn.Module): Normalization layer to use (default: `nn.BatchNorm2d`)
-            dropout (float): Dropout probability
+            dropout (float): Dropout probability (default: `0.0`)
         """
 
-        super(DecoderBlock3Plus, self).__init__()
+        super(DecoderBlockPlus, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.conv = nn.ModuleList([
             nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
             for in_channels in in_channels_list
@@ -212,23 +173,24 @@ class DecoderBlock3Plus(nn.Module):
         self.fusion = DoubleConv2d(mid_channels * len(in_channels_list), mid_channels, bias, normalize)
         self.dropout = nn.Dropout(dropout)
 
-    def _rescale(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
-        x_h, x_w = x.shape[2:]
-        y_h, y_w = y
+    @staticmethod
+    def _rescale(x: Tensor, size: Tuple[int, int]) -> Tensor:
+        h, w = x.shape[2:]
+        th, tw = size
 
-        # Downsample if larger
-        if x_h > y_h and x_w > y_w:
-            return F.adaptive_max_pool2d(x, (y_h, y_w))
-        # Upsample if smaller
-        return F.interpolate(x, size=y, mode='bilinear', align_corners=False)
+        # Downsample with adaptive max pooling if larger
+        if h > th and w > tw:
+            return F.adaptive_max_pool2d(x, (th, tw))
+        # Upsample with interpolation if smaller
+        if h < th or w < tw:
+            return F.interpolate(x, size=size, mode='bilinear', align_corners=False)
+        return x
     
-    def forward(self, x: Tuple[Tensor, ...], y: Tuple[int, int]) -> Tensor:
-        aligned = [
-            conv(self._rescale(feat, y))
-            for conv, feat in zip(self.conv, x)
-        ]
+    def forward(self, x: Tuple[Tensor, ...], size: Tuple[int, int]) -> Tensor:
+        aligned = [conv(self._rescale(f, size)) for conv, f in zip(self.conv, x)]
         fused = self.fusion(torch.cat(aligned, dim=1))
-        return self.dropout(fused)
+        fused = self.dropout(fused)
+        return fused
 
 
 class CGMHead(nn.Module):
@@ -243,18 +205,24 @@ class CGMHead(nn.Module):
      | ↓ Flatten
      | ↓ Softmax
     """
+
     def __init__(
             self,
             in_channels: int,
             bias: bool = False
     ) -> None:
+        """
+        Args:
+            in_channels (int): Number of input channels
+            bias (bool): Whether to use bias in convolutional layers (default: `False`)
+        """
+
         super(CGMHead, self).__init__()
         self.layers = nn.Sequential(
-            # nn.Dropout(0.5),
             nn.Conv2d(in_channels, 2, kernel_size=1, bias=bias),
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
-            nn.Softmax(dim=1) # nn.Sigmoid()
+            nn.Softmax(dim=1)
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -289,8 +257,8 @@ class OutputBlock(nn.Module):
             in_channels (int): Number of input channels
             out_channels (int): Number of output channels
             num_classes (int): Number of output classes
-            backbone (str): Whether to use as a backbone
-            bias (bool): Whether to use bias in convolutional layers
+            backbone (str): Whether to use as a backbone (default: `None`)
+            bias (bool): Whether to use bias in convolutional layers (default: `False`)
         """
 
         super(OutputBlock, self).__init__()
