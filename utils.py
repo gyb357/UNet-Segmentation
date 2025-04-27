@@ -1,14 +1,12 @@
 import yaml
 import numpy as np
-from typing import Any, Dict, List
+import torch.nn as nn
+from typing import Any, Dict
 from pathlib import Path
 from torch import Tensor
-from model.unet import UNet
-from model.unet2plus import UNet2Plus
-from model.unet3plus import UNet3Plus
+from model.unet import UNet, UNet2Plus, UNet3Plus
 
 
-@staticmethod
 def ternary_operation(a: bool, b: Any, c: Any) -> Any:
     """
     Args:
@@ -19,7 +17,6 @@ def ternary_operation(a: bool, b: Any, c: Any) -> Any:
 
     return b if a else c
 
-@staticmethod
 def ternary_operation_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
     """
     Args:
@@ -32,7 +29,6 @@ def ternary_operation_elif(a: bool, b: Any, c: bool, d: Any, e: Any) -> Any:
 
     return b if a else ternary_operation(c, d, e)
 
-@staticmethod
 def load_config(path: str) -> Dict[str, Any]:
     """
     Args:
@@ -49,7 +45,6 @@ def load_config(path: str) -> Dict[str, Any]:
         config = yaml.safe_load(file)
     return config
 
-@staticmethod
 def tensor2numpy(tensor: Tensor) -> np.float32:
     """
     Args:
@@ -58,20 +53,18 @@ def tensor2numpy(tensor: Tensor) -> np.float32:
 
     return tensor.detach().cpu().numpy().astype(np.float32)
 
-@staticmethod
-def get_model_list(model_ensemble: List[str]) -> List[str]:
+def get_model(model_name: str) -> nn.Module:
     """
     Args:
-        model_ensemble (List[str]): List of model names
+        model_name (str): Name of the model
     """
 
-    model_list = []
-    for model_name in model_ensemble:
-        if model_name == 'unet':
-            model_list.append(UNet)
-        elif model_name == 'unet2plus':
-            model_list.append(UNet2Plus)
-        elif model_name == 'unet3plus':
-            model_list.append(UNet3Plus)
-    return model_list
+    if model_name == 'unet':
+        return UNet
+    elif model_name == 'unet2plus':
+        return UNet2Plus
+    elif model_name == 'unet3plus':
+        return UNet3Plus
+    else:
+        raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
 

@@ -169,7 +169,8 @@ class DecoderBlockPlus(nn.Module):
         self.fusion = DoubleConv2d(mid_channels * len(in_channels_list), mid_channels, bias, normalize)
         self.dropout = nn.Dropout(dropout)
 
-    def _rescale(self, x: Tensor, size: Tuple[int, int]) -> Tensor:
+    @staticmethod
+    def _rescale(x: Tensor, size: Tuple[int, int]) -> Tensor:
         h, w = x.shape[2:]
         th, tw = size
 

@@ -1,8 +1,8 @@
 if __name__ == "__main__":
-    # Imports
+    # Import
     import os
     import torch.nn as nn
-    from utils import load_config, get_model_list
+    from utils import load_config, get_model
     from model.unet import UNet, UNet2Plus, UNet3Plus, EnsembleUNet
     from dataset.dataset import MaskDatasetGenerator, Augmentation, SegmentationDataset, SegmentationDataLoader
     from train.train import Trainer
@@ -17,17 +17,18 @@ if __name__ == "__main__":
     task_test = cfg_task["test"]
 
     # Model
+    cfg_model = cfg["model"]
+    cfg_ensemble = cfg_model["ensemble"]
     if task_train or task_test:
-        cfg_model = cfg["model"]
-        model_ensemble = cfg_model["ensemble"]
-
-        # Get model list
-        model_list = get_model_list(model_ensemble)
-
         # Ensemble model
-        if model_list:
+        if len(cfg_ensemble) > 0:
+            model_list = []
+
+            for model in cfg_ensemble:
+                model_list.append(get_model(model))
+            
             model = EnsembleUNet(
-                model_names=model_ensemble,
+                model_list,
                 channels=cfg_model["channels"],
                 num_classes=cfg_model["num_classes"],
                 backbone=cfg_model["backbone"],
@@ -43,16 +44,8 @@ if __name__ == "__main__":
 
         # Single model
         else:
-            model_name = cfg_model["name"]
-            if model_name == 'unet':
-                model = UNet
-            elif model_name == 'unet2plus':
-                model = UNet2Plus
-            elif model_name == 'unet3plus':
-                model = UNet3Plus
-            else:
-                raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
-            
+            model = get_model(cfg_model["name"])
+
             model = model(
                 channels=cfg_model["channels"],
                 num_classes=cfg_model["num_classes"],
@@ -70,7 +63,7 @@ if __name__ == "__main__":
         # Print model parameters
         parameters = model._get_parameters()
         print(f"Total Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
-
+        
     # MaskDatasetGenerator
     if task_train:
         cfg_mask_dataset = cfg["mask_dataset"]

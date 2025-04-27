@@ -1,7 +1,6 @@
 from . import *
 
 
-@staticmethod
 def conv1x1_layer(
         in_channels: int,
         out_channels: int,
@@ -20,7 +19,6 @@ def conv1x1_layer(
 
     return nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=bias)
 
-@staticmethod
 def conv3x3_layer(
         in_channels: int,
         out_channels: int,

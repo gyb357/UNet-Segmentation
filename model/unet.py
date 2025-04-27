@@ -540,7 +540,7 @@ class EnsembleUNet(nn.Module):
 
     def __init__(
             self,
-            models: List[nn.Module],
+            model_list: List[str],
             channels: int,
             num_classes: int,
             backbone: Optional[str] = None,
@@ -555,7 +555,7 @@ class EnsembleUNet(nn.Module):
     ) -> None:
         """
         Args:
-            models (List[nn.Module]): List of sub-models
+            model_list (list): List of sub-models
             channels (int): Number of input channels
             num_classes (int): Number of output classes
             backbone (str): Backbone architecture for encoder ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152')
@@ -570,9 +570,6 @@ class EnsembleUNet(nn.Module):
         """
 
         super(EnsembleUNet, self).__init__()
-        model_list = get_model_list(models)
-
-        # Create a list of sub-models
         self.sub_models = nn.ModuleList([
             model(
                 channels,
