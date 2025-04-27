@@ -20,7 +20,7 @@ class DoubleConv2d(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Type[nn.Module] = nn.BatchNorm2d
+            normalize: Optional[Type[nn.Module]] = None
     ) -> None:
         """
         Args:
@@ -31,6 +31,7 @@ class DoubleConv2d(nn.Module):
         """
 
         super(DoubleConv2d, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.layers = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=bias),
             normalize(out_channels),
@@ -60,7 +61,7 @@ class EncoderBlock(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Type[nn.Module] = nn.BatchNorm2d,
+            normalize: Optional[Type[nn.Module]] = None,
             dropout: float = 0.0
     ) -> None:
         """
@@ -73,6 +74,7 @@ class EncoderBlock(nn.Module):
         """
 
         super(EncoderBlock, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.conv = DoubleConv2d(in_channels, out_channels, bias, normalize)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.drop = nn.Dropout(dropout)
@@ -103,7 +105,7 @@ class DecoderBlock(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Type[nn.Module] = nn.BatchNorm2d,
+            normalize: Optional[Type[nn.Module]] = None,
             dropout: float = 0.0
     ) -> None:
         """
@@ -118,6 +120,7 @@ class DecoderBlock(nn.Module):
         """
 
         super(DecoderBlock, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.trans = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2, bias=bias)
         self.conv = DoubleConv2d(in_channels, out_channels, bias, normalize)
         self.drop = nn.Dropout(dropout)
@@ -149,7 +152,7 @@ class DecoderBlockPlus(nn.Module):
             in_channels_list: Tuple[int, ...],
             mid_channels: int,
             bias: bool = False,
-            normalize: Type[nn.Module] = nn.BatchNorm2d,
+            normalize: Optional[Type[nn.Module]] = None,
             dropout: float = 0.0
     ) -> None:
         """
@@ -162,6 +165,7 @@ class DecoderBlockPlus(nn.Module):
         """
 
         super(DecoderBlockPlus, self).__init__()
+        normalize = normalize if normalize is not None else nn.BatchNorm2d
         self.conv = nn.ModuleList([
             nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=bias)
             for in_channels in in_channels_list

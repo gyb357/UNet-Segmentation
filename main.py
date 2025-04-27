@@ -2,8 +2,8 @@ if __name__ == "__main__":
     # Import
     import os
     import torch.nn as nn
-    from utils import load_config, get_model
-    from model.unet import UNet, UNet2Plus, UNet3Plus, EnsembleUNet
+    from utils import load_config, get_model, has_files
+    from model.unet import EnsembleUNet
     from dataset.dataset import MaskDatasetGenerator, Augmentation, SegmentationDataset, SegmentationDataLoader
     from train.train import Trainer
 
@@ -41,6 +41,7 @@ if __name__ == "__main__":
                 deep_supervision=cfg_model["deep_supervision"],
                 cgm=cfg_model["cgm"]
             )
+            print(f"Ensemble model: {model_list}")
 
         # Single model
         else:
@@ -59,15 +60,18 @@ if __name__ == "__main__":
                 deep_supervision=cfg_model["deep_supervision"],
                 cgm=cfg_model["cgm"]
             )
+            print(f"Single model: {cfg_model['name']}")
 
         # Print model parameters
         parameters = model._get_parameters()
         print(f"Total Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
+        # Print backbone
+        print(f"Backbone: {cfg_model['backbone']}")
         
     # MaskDatasetGenerator
     if task_train:
         cfg_mask_dataset = cfg["mask_dataset"]
-        if not os.path.exists(cfg_mask_dataset["mask_dir"]):
+        if not has_files(cfg_mask_dataset["mask_dir"]):
             print(f"Mask directory {cfg_mask_dataset['mask_dir']} does not exist. Creating it.")
 
             mask_dataset_generator = MaskDatasetGenerator(

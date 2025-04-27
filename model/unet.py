@@ -218,7 +218,7 @@ class UNet2Plus(nn.Module):
             cgm (bool): Whether to use CGM(Classification-Guided Module) (default: `False`)
         """
 
-        super(UNet, self).__init__()
+        super(UNet2Plus, self).__init__()
         # Attributes
         self.backbone = backbone
         self.deep_supervision = deep_supervision

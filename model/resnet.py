@@ -317,8 +317,6 @@ def resnet(
     
     bottleneck, layers = RESNET_CONFIGS[name]
     resnet = ResNet(bottleneck, layers, channels, num_classes, bias, init_weights, zero_init_residual)
-    parameters = resnet._get_parameters()
-    print(f"ResNet Model Parameters: {parameters}, ({parameters / 1e6:.2f} M)")
 
     if pretrained:
         try:

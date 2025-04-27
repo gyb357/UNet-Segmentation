@@ -1,10 +1,10 @@
 import yaml
 import numpy as np
 import torch.nn as nn
+import os
 from typing import Any, Dict
 from pathlib import Path
 from torch import Tensor
-from model.unet import UNet, UNet2Plus, UNet3Plus
 
 
 def ternary_operation(a: bool, b: Any, c: Any) -> Any:
@@ -59,6 +59,9 @@ def get_model(model_name: str) -> nn.Module:
         model_name (str): Name of the model
     """
 
+    # Import models
+    from model.unet import UNet, UNet2Plus, UNet3Plus
+
     if model_name == 'unet':
         return UNet
     elif model_name == 'unet2plus':
@@ -67,4 +70,18 @@ def get_model(model_name: str) -> nn.Module:
         return UNet3Plus
     else:
         raise ValueError(f"Model {model_name} not recognized. Please check the model name in the config file.")
+
+def has_files(directory: str) -> bool:
+    """
+    Args:
+        directory (str): Directory to check
+    """
+
+    try:
+        for entry in os.scandir(directory):
+            if entry.is_file() and entry.name != '.gitkeep':
+                return True
+        return False
+    except FileNotFoundError:
+        raise ValueError(f"Directory '{directory}' does not exist.")
 
