@@ -20,7 +20,7 @@ class DoubleConv2d(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Optional[Type[nn.Module]] = None
+            normalize: Optional[nn.Module] = None
     ) -> None:
         """
         Args:
@@ -61,7 +61,7 @@ class EncoderBlock(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Optional[Type[nn.Module]] = None,
+            normalize: Optional[nn.Module] = None,
             dropout: float = 0.0
     ) -> None:
         """
@@ -105,7 +105,7 @@ class DecoderBlock(nn.Module):
             in_channels: int,
             out_channels: int,
             bias: bool = False,
-            normalize: Optional[Type[nn.Module]] = None,
+            normalize: Optional[nn.Module] = None,
             dropout: float = 0.0
     ) -> None:
         """
@@ -152,7 +152,7 @@ class DecoderBlockPlus(nn.Module):
             in_channels_list: Tuple[int, ...],
             mid_channels: int,
             bias: bool = False,
-            normalize: Optional[Type[nn.Module]] = None,
+            normalize: Optional[nn.Module] = None,
             dropout: float = 0.0
     ) -> None:
         """
