@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import itertools
-from typing import Optional, Callable, Tuple, Type, Union, List
+from typing import Optional, Tuple, Type, Union, List
 from torch import Tensor
 from utils import ternary_operation_elif, get_model
 from model.resnet import resnet
@@ -14,7 +14,7 @@ __all__ = [
     "torch",
     "F",
     "itertools",
-    "Optional", "Callable", "Tuple", "Type", "Union", "List",
+    "Optional", "Tuple", "Type", "Union", "List",
     "Tensor",
     "ternary_operation_elif", "get_model",
     "resnet",

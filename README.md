@@ -1,16 +1,8 @@
 # Table of Contents
 
 1. [Introduction](#Introduction)
-     * UNet Implementations with ResNet Backbone
-     * Purpose of the Project
-     
 2. [Architecture Overview](#Architecture-Overview)
-     * UNet
-     * UNet2+
-     * UNet3+
-
 3. [Model Comparison](#Model-Comparison)
-
 4. [Getting Started](#Getting-Started)
      * Check the Running Environment
      * Installation and Dependencies
@@ -27,9 +19,6 @@
 ## UNet Implementations with ResNet Backbone
 This repository implements multiple UNet-based architectures with ResNet backbones using PyTorch. The models leverage pretrained weights from ResNet to enhance feature extraction in the encoder parts of these architectures. The implementation includes UNet, UNet++, and UNet3+, all of which support ResNet backbones for improved performance on biomedical image segmentation tasks.
 
-## Purpose of the Project
-This project focuses on implementing and comparing various UNet architectures, integrating them with powerful ResNet backbones to create high-performance segmentation models. The implementation supports seamless switching between different UNet variants to find the optimal architecture for specific segmentation tasks.
-
 
 *****
 
@@ -38,14 +27,7 @@ This project focuses on implementing and comparing various UNet architectures, i
 
 ![unet](assets/unet.png)
 
-## UNet
-The classic UNet architecture features a symmetric encoder-decoder structure with skip connections, allowing it to capture contextual information while preserving spatial details. This design makes UNet effective for general biomedical image segmentation tasks. The encoder progressively reduces spatial dimensions while extracting high-level features, and the decoder restores the original resolution using upsampling layers. Skip connections directly transfer fine-grained spatial information from the encoder to the decoder, helping to recover precise segmentation boundaries.
-
-## UNet2+
-UNet++ redesigns the skip connections with a nested dense structure, effectively bridging the semantic gap between encoder and decoder features. This design introduces convolutional layers within the skip pathways, progressively refining features before passing them to the decoder. Additionally, UNet++ enabling more effective gradient propagation and improving segmentation accuracy.
-
-## UNet3+
-UNet3+ takes a full-scale approach by introducing extensive skip connections that link each decoder stage with all encoder stages, rather than just the corresponding level. This multi-scale feature fusion integrates high-level semantic information with low-level spatial details at every decoder level, enhancing both fine-grained segmentation and global context awareness.
+The UNet architecture features a symmetric encoder-decoder structure with skip connections, allowing it to capture contextual information while preserving spatial details. This design makes UNet effective for general biomedical image segmentation tasks. The encoder progressively reduces spatial dimensions while extracting high-level features, and the decoder restores the original resolution using upsampling layers. Skip connections directly transfer fine-grained spatial information from the encoder to the decoder, helping to recover precise segmentation boundaries.
 
  > [!Note]
  > For more information, see the corresponding arxiv paper.
@@ -65,12 +47,12 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 
 |  Backbone  |  UNet  | UNet2+ | UNet3+ |
 |------------|--------|--------|--------|
-| -          | 31.04M | 20.62M | 20.13M | 
-| ResNet 18  | 20.78M | 12.86M | 12.30M | 
-| ResNet 34  | 30.89M | 22.97M | 22.40M | 
-| ResNet 50  | 40.90M | 25.51M | 25.16M | 
-| ResNet 101 | 59.89M | 44.50M | 44.15M | 
-| ResNet 152 | 75.54M | 60.15M | 59.79M | 
+| -          | 31.04M | 20.62M | 20.13M |
+| ResNet 18  | 20.78M | 12.86M | 12.30M |
+| ResNet 34  | 30.89M | 22.97M | 22.40M |
+| ResNet 50  | 40.90M | 25.51M | 25.16M |
+| ResNet 101 | 59.89M | 44.50M | 44.15M |
+| ResNet 152 | 75.54M | 60.15M | 59.79M |
 
 
 ## ResNet
@@ -86,7 +68,7 @@ UNet3+ takes a full-scale approach by introducing extensive skip connections tha
 </div>
 
  > [!Note]
- > Download the Imagenet1K pretrained model and put it in the `model/pretrained/.`
+ > Download the Imagenet1K pretrained model and put it in the `./model/pretrained/.`
  > More information is available [here](https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html).
 
 
@@ -106,30 +88,25 @@ Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/gyb357/UNet-Segmentation
-cd UNet-Segmentation
 pip install -r requirements.txt
 ```
 
-If your GPU is not recognized or CUDA is not properly set up, you may need to install the appropriate version of PyTorch. You can find the correct `.whl` file from the official [PyTorch website](https://pytorch.org/get-started/previous-versions/).
+If your GPU is not recognized or CUDA is not properly set up, you may need to install the appropriate version of PyTorch.
+[PyTorch website](https://pytorch.org/get-started/previous-versions/).
 
 For example, if you are using CUDA 12.1, install PyTorch with:
 
 ```bash
-pip uninstall torch torchvision torchaudio
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip uninstall torch torchvision
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 ```
 
 ## 3. Downloading Pre-Trained ResNet Weights
-See Model Comparison topic.
+Check Model Comparison topic.
 
 ## 4. Training the Model
-Once the setup is complete, you can start training the U-Net model using the following command:
-
-```bash
-python main.py --config config/config.yaml
-```
-
-For custom training configurations, modify `config/config.yaml`.
+Modify the `./config/config.yaml` file before training.
+To train the model, run `./main.py`.
 
 
 *****
@@ -157,14 +134,12 @@ UNet-Segmentation
 │   ├── pretrained/   # Put pretrained resnet weights here
 │   ├── modules.py
 │   ├── resnet.py
-│   ├── unet.py
-│   ├── unet2plus.py
-│   └── unet3plus.py
+│   └── unet.py
 ├── train/            # Training-related scripts
 │   ├── loss.py
 │   └── train.py
-├── main.py           # Main entry point for running experiments
 ├── LICENSE
+├── main.py           # Main entry point for running experiments
 ├── README.md
 ├── requirements.txt
 └── utils.py

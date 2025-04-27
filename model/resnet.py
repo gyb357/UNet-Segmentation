@@ -61,7 +61,7 @@ class Bottleneck2Conv(nn.Module):
             out_channels: int,
             stride: int = 1,
             bias: bool = False,
-            downsample: Optional[Callable[..., nn.Module]] = None
+            downsample: Optional[nn.Module] = None
     ) -> None:
         """
         Args:
@@ -121,7 +121,7 @@ class Bottleneck3Conv(nn.Module):
             out_channels: int,
             stride: int = 1,
             bias: bool = False,
-            downsample: Optional[Callable[..., nn.Module]] = None
+            downsample: Optional[nn.Module] = None
     ) -> None:
         """
         Args:
