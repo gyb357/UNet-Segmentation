@@ -2,11 +2,8 @@ if __name__ == "__main__":
     # Imports
     import os
     import torch.nn as nn
-    from utils import load_config
-    from model.ensemble import EnsembleUNet
-    from model.unet import UNet
-    from model.unet2plus import UNet2Plus
-    from model.unet3plus import UNet3Plus
+    from utils import load_config, get_model_list
+    from model.unet import UNet, UNet2Plus, UNet3Plus, EnsembleUNet
     from dataset.dataset import MaskDatasetGenerator, Augmentation, SegmentationDataset, SegmentationDataLoader
     from train.train import Trainer
 
@@ -24,8 +21,11 @@ if __name__ == "__main__":
         cfg_model = cfg["model"]
         model_ensemble = cfg_model["ensemble"]
 
+        # Get model list
+        model_list = get_model_list(model_ensemble)
+
         # Ensemble model
-        if model_ensemble:
+        if model_list:
             model = EnsembleUNet(
                 model_names=model_ensemble,
                 channels=cfg_model["channels"],
