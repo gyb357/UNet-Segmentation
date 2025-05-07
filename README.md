@@ -108,8 +108,12 @@ Check Model Comparison topic.
 Modify the `./config/config.yaml` file before training.
 To train the model, run `./main.py`.
 
+
+
  > [!IMPORTANT]
  > For training to work properly, the image dataset files and mask dataset files must have identical filenames. This ensures correct pairing between input images and their corresponding segmentation masks.
+ >
+ > Place your original images in `dataset/image/` and segmentation mask images in `dataset/mask/`. If your mask data is in text format (e.g., .txt files), place them in `dataset/label/` and configure the MaskImageGenerator accordingly.
 
 
 *****
