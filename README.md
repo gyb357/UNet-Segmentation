@@ -19,6 +19,10 @@
 ## UNet Implementations with ResNet Backbone
 This repository implements multiple UNet-based architectures with ResNet backbones using PyTorch. The models leverage pretrained weights from ResNet to enhance feature extraction in the encoder parts of these architectures. The implementation includes UNet, UNet++, and UNet3+, all of which support ResNet backbones for improved performance on biomedical image segmentation tasks.
 
+<p align="center">
+  <img src="assets/segmentation.png" width="640" alt="Segmentation examples">
+</p>
+
 
 *****
 
